@@ -1,0 +1,10 @@
+[project]
+name = "nicolasm"
+version = "0.1.0"
+description = "A small research-oriented language modeling laboratory."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
