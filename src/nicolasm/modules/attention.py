@@ -75,7 +75,7 @@ class CausalSelfAttentionHead(nn.Module):
                 "x must have shape (batch_size, block_size, embedding_dim)."
             )
 
-        batch_size, sequence_length, embedding_dim = x.shape
+        _, sequence_length, embedding_dim = x.shape
 
         if embedding_dim != self.embedding_dim:
             raise ValueError(
@@ -103,5 +103,88 @@ class CausalSelfAttentionHead(nn.Module):
         weights = self.dropout(weights)
 
         out = weights @ v
+
+        return out
+
+
+class MultiHeadCausalSelfAttention(nn.Module):
+    """
+    Multi-head causal self-attention.
+
+    This module runs several causal self-attention heads in parallel,
+    concatenates their outputs, and projects back to the embedding dimension.
+    """
+
+    def __init__(
+        self,
+        embedding_dim: int,
+        num_heads: int,
+        block_size: int,
+        dropout: float = 0.0,
+    ) -> None:
+        super().__init__()
+
+        if embedding_dim <= 0:
+            raise ValueError("embedding_dim must be positive.")
+
+        if num_heads <= 0:
+            raise ValueError("num_heads must be positive.")
+
+        if embedding_dim % num_heads != 0:
+            raise ValueError("embedding_dim must be divisible by num_heads.")
+
+        if block_size <= 0:
+            raise ValueError("block_size must be positive.")
+
+        if not 0.0 <= dropout < 1.0:
+            raise ValueError("dropout must satisfy 0 <= dropout < 1.")
+
+        self.embedding_dim = embedding_dim
+        self.num_heads = num_heads
+        self.block_size = block_size
+        self.head_dim = embedding_dim // num_heads
+
+        self.heads = nn.ModuleList(
+            [
+                CausalSelfAttentionHead(
+                    embedding_dim=embedding_dim,
+                    head_dim=self.head_dim,
+                    block_size=block_size,
+                    dropout=dropout,
+                )
+                for _ in range(num_heads)
+            ]
+        )
+
+        self.proj = nn.Linear(embedding_dim, embedding_dim)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Apply multi-head causal self-attention.
+
+        Parameters
+        ----------
+        x:
+            Tensor of shape (batch_size, sequence_length, embedding_dim).
+
+        Returns
+        -------
+        Tensor of shape (batch_size, sequence_length, embedding_dim).
+        """
+        if x.ndim != 3:
+            raise ValueError(
+                "x must have shape (batch_size, sequence_length, embedding_dim)."
+            )
+
+        if x.shape[-1] != self.embedding_dim:
+            raise ValueError(
+                f"Expected embedding_dim={self.embedding_dim}, "
+                f"got {x.shape[-1]}."
+            )
+
+        out = torch.cat([head(x) for head in self.heads], dim=-1)
+        out = self.proj(out)
+        out = self.dropout(out)
 
         return out
