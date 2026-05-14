@@ -1,7 +1,11 @@
 import pytest
 import torch
 
-from nicolasm.modules.attention import CausalSelfAttentionHead
+from nicolasm.modules.attention import (
+    CausalSelfAttentionHead,
+    MultiHeadCausalSelfAttention,
+)
+
 from nicolasm.modules.causal_mask import causal_mask
 
 
@@ -142,6 +146,111 @@ def test_attention_head_rejects_invalid_dropout() -> None:
         CausalSelfAttentionHead(
             embedding_dim=8,
             head_dim=4,
+            block_size=4,
+            dropout=1.0,
+        )
+
+
+from nicolasm.modules.attention import MultiHeadCausalSelfAttention
+
+def test_multi_head_attention_output_shape() -> None:
+    batch_size = 2
+    block_size = 4
+    embedding_dim = 8
+    num_heads = 2
+
+    attention = MultiHeadCausalSelfAttention(
+        embedding_dim=embedding_dim,
+        num_heads=num_heads,
+        block_size=block_size,
+    )
+
+    x = torch.randn(batch_size, block_size, embedding_dim)
+    out = attention(x)
+
+    assert out.shape == (batch_size, block_size, embedding_dim)
+
+
+def test_multi_head_attention_accepts_shorter_sequence() -> None:
+    batch_size = 2
+    block_size = 8
+    sequence_length = 4
+    embedding_dim = 8
+    num_heads = 2
+
+    attention = MultiHeadCausalSelfAttention(
+        embedding_dim=embedding_dim,
+        num_heads=num_heads,
+        block_size=block_size,
+    )
+
+    x = torch.randn(batch_size, sequence_length, embedding_dim)
+    out = attention(x)
+
+    assert out.shape == (batch_size, sequence_length, embedding_dim)
+
+
+def test_multi_head_attention_rejects_nondivisible_dimensions() -> None:
+    with pytest.raises(ValueError):
+        MultiHeadCausalSelfAttention(
+            embedding_dim=10,
+            num_heads=3,
+            block_size=4,
+        )
+
+
+def test_multi_head_attention_rejects_bad_input_rank() -> None:
+    attention = MultiHeadCausalSelfAttention(
+        embedding_dim=8,
+        num_heads=2,
+        block_size=4,
+    )
+
+    x = torch.randn(4, 8)
+
+    with pytest.raises(ValueError):
+        attention(x)
+
+
+def test_multi_head_attention_rejects_wrong_embedding_dim() -> None:
+    attention = MultiHeadCausalSelfAttention(
+        embedding_dim=8,
+        num_heads=2,
+        block_size=4,
+    )
+
+    x = torch.randn(2, 4, 7)
+
+    with pytest.raises(ValueError):
+        attention(x)
+
+
+def test_multi_head_attention_rejects_invalid_hyperparameters() -> None:
+    with pytest.raises(ValueError):
+        MultiHeadCausalSelfAttention(
+            embedding_dim=0,
+            num_heads=2,
+            block_size=4,
+        )
+
+    with pytest.raises(ValueError):
+        MultiHeadCausalSelfAttention(
+            embedding_dim=8,
+            num_heads=0,
+            block_size=4,
+        )
+
+    with pytest.raises(ValueError):
+        MultiHeadCausalSelfAttention(
+            embedding_dim=8,
+            num_heads=2,
+            block_size=0,
+        )
+
+    with pytest.raises(ValueError):
+        MultiHeadCausalSelfAttention(
+            embedding_dim=8,
+            num_heads=2,
             block_size=4,
             dropout=1.0,
         )
