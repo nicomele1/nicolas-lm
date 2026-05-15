@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import torch
@@ -10,27 +11,58 @@ from nicolasm.models.transformer import TinyTransformerLanguageModel
 from nicolasm.tokenizer import CharTokenizer
 
 
-# ---------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Sample text from a trained NicolásLM checkpoint."
+    )
 
-MODEL_NAME = "transformer"
-CHECKPOINT_PATH = Path("experiments/runs") / MODEL_NAME / "model.pt"
+    parser.add_argument(
+        "--model-name",
+        type=str,
+        default="transformer",
+        choices=["bigram", "transformer"],
+        help="Name of the model checkpoint to load.",
+    )
 
-PROMPT = "El "
-MAX_NEW_TOKENS = 500
-TEMPERATURE = 0.7
-TOP_K: int | None = 20
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        default="El ",
+        help="Initial text prompt.",
+    )
+
+    parser.add_argument(
+        "--max-new-tokens",
+        type=int,
+        default=500,
+        help="Number of new tokens to generate.",
+    )
+
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.7,
+        help="Sampling temperature. Lower is more conservative.",
+    )
+
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=20,
+        help="Keep only the top-k most likely tokens. Use 0 to disable.",
+    )
+
+    return parser.parse_args()
 
 
 def load_tokenizer_from_checkpoint(checkpoint: dict) -> CharTokenizer:
     """
     Reconstruct the character tokenizer from the checkpoint.
     """
-    stoi = checkpoint["stoi"]
-    itos = checkpoint["itos"]
-
-    return CharTokenizer(stoi=stoi, itos=itos)
+    return CharTokenizer(
+        stoi=checkpoint["stoi"],
+        itos=checkpoint["itos"],
+    )
 
 
 def build_model_from_checkpoint(checkpoint: dict) -> torch.nn.Module:
@@ -59,22 +91,11 @@ def build_model_from_checkpoint(checkpoint: dict) -> torch.nn.Module:
 
 def sample_next_token(
     logits: torch.Tensor,
-    temperature: float = 1.0,
-    top_k: int | None = None,
+    temperature: float,
+    top_k: int | None,
 ) -> torch.Tensor:
     """
-    Sample one token from logits.
-
-    Parameters
-    ----------
-    logits:
-        Tensor of shape (batch_size, vocab_size).
-
-    temperature:
-        Controls randomness. Smaller values make the distribution sharper.
-
-    top_k:
-        If not None, keep only the top_k most likely tokens before sampling.
+    Sample one token from a batch of logits.
     """
     if temperature <= 0:
         raise ValueError("temperature must be positive.")
@@ -83,7 +104,7 @@ def sample_next_token(
 
     if top_k is not None:
         if top_k <= 0:
-            raise ValueError("top_k must be positive if provided.")
+            raise ValueError("top_k must be positive when provided.")
 
         vocab_size = logits.shape[-1]
         k = min(top_k, vocab_size)
@@ -98,9 +119,7 @@ def sample_next_token(
         )
 
     probs = F.softmax(logits, dim=-1)
-    next_idx = torch.multinomial(probs, num_samples=1)
-
-    return next_idx
+    return torch.multinomial(probs, num_samples=1)
 
 
 @torch.no_grad()
@@ -108,11 +127,11 @@ def generate(
     model: torch.nn.Module,
     idx: torch.Tensor,
     max_new_tokens: int,
-    temperature: float = 1.0,
-    top_k: int | None = None,
+    temperature: float,
+    top_k: int | None,
 ) -> torch.Tensor:
     """
-    Generate tokens autoregressively from a prompt.
+    Generate tokens autoregressively from an initial context.
     """
     if idx.ndim != 2:
         raise ValueError("idx must have shape (batch_size, current_length).")
@@ -129,7 +148,6 @@ def generate(
             idx_cond = idx[:, -block_size:]
 
         logits, _ = model(idx_cond)
-
         last_logits = logits[:, -1, :]
 
         next_idx = sample_next_token(
@@ -144,13 +162,17 @@ def generate(
 
 
 def main() -> None:
-    if not CHECKPOINT_PATH.exists():
+    args = parse_args()
+
+    checkpoint_path = Path("experiments/runs") / args.model_name / "model.pt"
+
+    if not checkpoint_path.exists():
         raise FileNotFoundError(
-            f"Could not find {CHECKPOINT_PATH}. "
+            f"Could not find {checkpoint_path}. "
             "Train the model first by running scripts/train.py."
         )
 
-    checkpoint = torch.load(CHECKPOINT_PATH, map_location="cpu")
+    checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
     tokenizer = load_tokenizer_from_checkpoint(checkpoint)
 
@@ -159,7 +181,7 @@ def main() -> None:
     model.eval()
 
     try:
-        prompt_ids = tokenizer.encode(PROMPT)
+        prompt_ids = tokenizer.encode(args.prompt)
     except ValueError as exc:
         raise ValueError(
             "The prompt contains characters that were not present in the "
@@ -168,16 +190,17 @@ def main() -> None:
 
     context = torch.tensor([prompt_ids], dtype=torch.long)
 
+    top_k = None if args.top_k == 0 else args.top_k
+
     generated = generate(
         model=model,
         idx=context,
-        max_new_tokens=MAX_NEW_TOKENS,
-        temperature=TEMPERATURE,
-        top_k=TOP_K,
+        max_new_tokens=args.max_new_tokens,
+        temperature=args.temperature,
+        top_k=top_k,
     )
 
     text = tokenizer.decode(generated[0].tolist())
-
     print(text)
 
 
