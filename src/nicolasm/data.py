@@ -85,3 +85,44 @@ def train_val_split(
     val_tokens = tokens[split_index:]
 
     return train_tokens, val_tokens
+
+
+def train_val_test_split(
+    tokens: list[int],
+    train_fraction: float = 0.8,
+    val_fraction: float = 0.1,
+) -> tuple[list[int], list[int], list[int]]:
+    """
+    Split a token sequence into train, validation, and test parts.
+
+    The train set is used to update model parameters.
+    The validation set is used to monitor training and tune hyperparameters.
+    The test set is reserved for final evaluation.
+    """
+    if not tokens:
+        raise ValueError("Cannot split an empty token sequence.")
+
+    if not 0.0 < train_fraction < 1.0:
+        raise ValueError("train_fraction must lie strictly between 0 and 1.")
+
+    if not 0.0 < val_fraction < 1.0:
+        raise ValueError("val_fraction must lie strictly between 0 and 1.")
+
+    if train_fraction + val_fraction >= 1.0:
+        raise ValueError("train_fraction + val_fraction must be less than 1.")
+
+    n = len(tokens)
+
+    train_end = int(n * train_fraction)
+    val_end = int(n * (train_fraction + val_fraction))
+
+    train_tokens = tokens[:train_end]
+    val_tokens = tokens[train_end:val_end]
+    test_tokens = tokens[val_end:]
+
+    if not train_tokens or not val_tokens or not test_tokens:
+        raise ValueError(
+            "Split would produce an empty train, validation, or test set."
+        )
+
+    return train_tokens, val_tokens, test_tokens
