@@ -1,6 +1,6 @@
 import pytest
 
-from nicolasm.data import TokenDataset, train_val_split
+from nicolasm.data import TokenDataset, train_val_split, train_val_test_split
 
 
 def test_dataset_length() -> None:
@@ -79,3 +79,46 @@ def test_train_val_split_rejects_empty_tokens() -> None:
 def test_train_val_split_rejects_invalid_fraction() -> None:
     with pytest.raises(ValueError):
         train_val_split([0, 1, 2], train_fraction=1.0)
+
+
+def test_train_val_test_split() -> None:
+    tokens = list(range(10))
+
+    train_tokens, val_tokens, test_tokens = train_val_test_split(
+        tokens,
+        train_fraction=0.6,
+        val_fraction=0.2,
+    )
+
+    assert train_tokens == [0, 1, 2, 3, 4, 5]
+    assert val_tokens == [6, 7]
+    assert test_tokens == [8, 9]
+
+
+def test_train_val_test_split_rejects_empty_tokens() -> None:
+    with pytest.raises(ValueError):
+        train_val_test_split([])
+
+
+def test_train_val_test_split_rejects_invalid_fractions() -> None:
+    with pytest.raises(ValueError):
+        train_val_test_split([0, 1, 2], train_fraction=1.0)
+
+    with pytest.raises(ValueError):
+        train_val_test_split([0, 1, 2], val_fraction=0.0)
+
+    with pytest.raises(ValueError):
+        train_val_test_split(
+            [0, 1, 2],
+            train_fraction=0.8,
+            val_fraction=0.3,
+        )
+
+
+def test_train_val_test_split_rejects_empty_split() -> None:
+    with pytest.raises(ValueError):
+        train_val_test_split(
+            [0, 1],
+            train_fraction=0.8,
+            val_fraction=0.1,
+        )
