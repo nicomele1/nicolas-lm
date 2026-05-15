@@ -3,9 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import torch
+from torch import nn
 
-from nicolasm.data import TokenDataset, train_val_split
+from nicolasm.data import TokenDataset, train_val_test_split
 from nicolasm.models.bigram import BigramLanguageModel
+from nicolasm.models.transformer import TinyTransformerLanguageModel
 from nicolasm.tokenizer import CharTokenizer
 
 
@@ -14,14 +16,26 @@ from nicolasm.tokenizer import CharTokenizer
 # ---------------------------------------------------------------------
 
 DATA_PATH = Path("data/raw/input.txt")
-CHECKPOINT_DIR = Path("experiments/runs/bigram")
+
+MODEL_NAME = "transformer"
+
+CHECKPOINT_DIR = Path("experiments/runs") / MODEL_NAME
 CHECKPOINT_PATH = CHECKPOINT_DIR / "model.pt"
 
-BLOCK_SIZE = 8
-BATCH_SIZE = 16
-MAX_STEPS = 500
-EVAL_INTERVAL = 100
-LEARNING_RATE = 1e-2
+BLOCK_SIZE = 64
+BATCH_SIZE = 32
+MAX_STEPS = 5000
+EVAL_INTERVAL = 500
+LEARNING_RATE = 3e-4
+
+EMBEDDING_DIM = 64
+NUM_HEADS = 4
+NUM_LAYERS = 2
+DROPOUT = 0.1
+
+TRAIN_FRACTION = 0.8
+VAL_FRACTION = 0.1
+TEST_FRACTION = 0.1
 
 
 def batch_to_tensors(
@@ -36,9 +50,29 @@ def batch_to_tensors(
     return x, y
 
 
+def build_model(vocab_size: int) -> nn.Module:
+    """
+    Build the language model selected by MODEL_NAME.
+    """
+    if MODEL_NAME == "bigram":
+        return BigramLanguageModel(vocab_size=vocab_size)
+
+    if MODEL_NAME == "transformer":
+        return TinyTransformerLanguageModel(
+            vocab_size=vocab_size,
+            block_size=BLOCK_SIZE,
+            embedding_dim=EMBEDDING_DIM,
+            num_heads=NUM_HEADS,
+            num_layers=NUM_LAYERS,
+            dropout=DROPOUT,
+        )
+
+    raise ValueError(f"Unknown MODEL_NAME: {MODEL_NAME!r}")
+
+
 @torch.no_grad()
 def estimate_loss(
-    model: BigramLanguageModel,
+    model: nn.Module,
     dataset: TokenDataset,
     eval_iters: int = 20,
 ) -> float:
@@ -77,19 +111,25 @@ def main() -> None:
     tokenizer = CharTokenizer.from_text(text)
     tokens = tokenizer.encode(text)
 
-    train_tokens, val_tokens = train_val_split(tokens, train_fraction=0.9)
+    train_tokens, val_tokens, test_tokens = train_val_test_split(
+        tokens,
+        train_fraction=TRAIN_FRACTION,
+        val_fraction=VAL_FRACTION,
+    )
 
     train_dataset = TokenDataset(tokens=train_tokens, block_size=BLOCK_SIZE)
     val_dataset = TokenDataset(tokens=val_tokens, block_size=BLOCK_SIZE)
 
-    model = BigramLanguageModel(vocab_size=tokenizer.vocab_size)
+    model = build_model(vocab_size=tokenizer.vocab_size)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 
-    print("Training NicolásLM-0: BigramLanguageModel")
+    print(f"Training model: {MODEL_NAME}")
+    print(f"Checkpoint path: {CHECKPOINT_PATH}")
     print(f"Vocabulary size: {tokenizer.vocab_size}")
     print(f"Train tokens: {len(train_tokens)}")
     print(f"Validation tokens: {len(val_tokens)}")
+    print(f"Test tokens: {len(test_tokens)}")
     print(f"Block size: {BLOCK_SIZE}")
     print(f"Batch size: {BATCH_SIZE}")
     print()
@@ -121,11 +161,19 @@ def main() -> None:
 
     torch.save(
         {
+            "model_name": MODEL_NAME,
             "model_state_dict": model.state_dict(),
             "stoi": tokenizer.stoi,
             "itos": tokenizer.itos,
             "vocab_size": tokenizer.vocab_size,
             "block_size": BLOCK_SIZE,
+            "embedding_dim": EMBEDDING_DIM,
+            "num_heads": NUM_HEADS,
+            "num_layers": NUM_LAYERS,
+            "dropout": DROPOUT,
+            "train_fraction": TRAIN_FRACTION,
+            "val_fraction": VAL_FRACTION,
+            "test_fraction": TEST_FRACTION,
         },
         CHECKPOINT_PATH,
     )
