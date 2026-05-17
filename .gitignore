@@ -219,6 +219,7 @@ __marimo__/
 
 # NicolásLM generated artifacts
 data/raw/
+data/corpora/
 experiments/runs/
 experiments/results/
 *.pt
