@@ -16,6 +16,24 @@ Each row of the final results table corresponds to one pair:
 The main comparison should keep architecture and training hyperparameters fixed
 while varying only the corpus.
 
+## Literature Framing
+
+Chang et al. motivate the study by arguing that raw token count is not enough to
+describe the value of training data. Their effective-token formulation combines
+data quantity with text-quality signals, including diversity and syntheticity.
+This project does not replicate their scaling-law fit and does not use a teacher
+model to estimate syntheticity. Instead, it isolates one measurable component,
+empirical textual diversity, and tests whether it is associated with better
+generalization at equal raw corpus size.
+
+Petersen and Zech provide the mathematical framing: training is treated as
+empirical risk minimization, optimization is performed by mini-batch
+gradient-based methods, and generalization is summarized by the difference
+between empirical training loss and held-out test loss. Their classical
+generalization bounds assume idealized conditions, so the uncertainty intervals
+reported here are descriptive summaries over evaluation batches rather than
+formal iid confidence intervals.
+
 ## Recommended Models
 
 - `bigram`: interpretable first-order Markov baseline.
@@ -83,6 +101,10 @@ Delta_test = test_loss(high_diversity) - test_loss(low_diversity)
 
 Negative `Delta_test` means the higher-diversity corpus achieved lower test
 cross-entropy. Also compare perplexity and generalization gap.
+
+The project uses `gzip_compression_ratio = compressed_size / original_size`.
+Under this convention, higher values indicate less compressible and more
+empirically diverse text.
 
 The reported uncertainty interval is descriptive. It summarizes variation over
 random evaluation batches, but it is not an exact iid confidence interval
