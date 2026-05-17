@@ -222,5 +222,6 @@ data/raw/
 data/corpora/
 experiments/runs/
 experiments/results/
+experiments/effective_tokens/
 *.pt
 *.zip
