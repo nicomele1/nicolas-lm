@@ -223,5 +223,6 @@ data/corpora/
 experiments/runs/
 experiments/results/
 experiments/effective_tokens/
+experiments/reports/*/
 *.pt
 *.zip
