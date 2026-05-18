@@ -9,6 +9,8 @@
 
 ## Local PDF references
 
+- Philipp Petersen and Jakob Zech, "Mathematical Theory of Deep Learning":
+  `data/pdfs/matematicas/deep-learning-theory/mathematical-theory-of-deep-learning.pdf`
 - Ovidiu Calin, "Deep Learning Architectures: A Mathematical Approach":
   `data/pdfs/matematicas/llms/deep-learning-architectures/deep-learning-architectures.pdf`
 - Sven A. Wegner, "Mathematical Introduction to Data Science":
