@@ -72,14 +72,15 @@ tokens efectivos en el sentido de Chang et~al. Se implementa en el repositorio
 Transformer causal y una variante de tipo LLaMA) y se formalizan los objetos
 matemáticos que ejecuta el código: red neuronal entrenable, modelo
 autoregresivo, riesgo poblacional y empírico, entropía cruzada y AdamW. Con
-dos corpus de \(100\,000\) caracteres y el mismo presupuesto de entrenamiento,
+dos corpus de \(1\,000\,000\) caracteres y el mismo presupuesto de entrenamiento,
 el corpus más diverso presenta mayor entropía de \(n\)-gramas, mayor
-distinct-\(4\) y menor compresibilidad, pero obtiene mayor pérdida de test y
-mayor brecha de generalización en ambas arquitecturas. En este estudio,
-diversidad local no implica efectividad de tokens. \textcolor{blue}{Estas notas resumen los
-resultados; un documento complementario,
+distinct-\(4\) y mayor compresibilidad gzip, pero obtiene mayor pérdida de
+test en ambas arquitecturas. La brecha de generalización exhibe el patrón
+contrario: el corpus más diverso presenta menor sobreajuste. En este estudio,
+diversidad local no implica menor riesgo absoluto, aunque sí reduce la
+discrepancia entre train y test. Un documento complementario,
 \code{mathematical\_background.tex} en el mismo repositorio, desarrolla los
-preliminares matemáticos en detalle}.
+preliminares matemáticos en detalle.
 \vspace{0.20em}
 
 \noindent\textbf{Palabras clave.}
@@ -190,7 +191,7 @@ tokens.
 \section{Dataset autoregresivo}
 \label{sec:dataset}
 
-Dado un contexto finito \(B=64\), el módulo \code{data.py} construye en
+Dado un contexto finito \(B=128\), el módulo \code{data.py} construye en
 \code{TokenDataset} ejemplos supervisados por desplazamiento de una posición:
 \begin{equation}
 X_i=(x_i,\ldots,x_{i+B-1}),
@@ -200,7 +201,7 @@ Y_i=(x_{i+1},\ldots,x_{i+B}).
 \end{equation}
 El parámetro \(B\), llamado \emph{block size} o longitud de contexto,
 determina cuántos tokens anteriores ve el modelo al predecir el siguiente.
-La elección \(B=64\) responde a un compromiso entre dos restricciones:
+La elección \(B=128\) responde a un compromiso entre dos restricciones:
 \(B\) debe ser lo suficientemente grande para capturar dependencias
 locales informativas (palabras y frases cortas a nivel carácter ocupan
 del orden de varias decenas de caracteres) y lo suficientemente pequeño
@@ -387,7 +388,7 @@ El script \code{train.py} utiliza AdamW
 \cite{loshchilov-2019-adamw,kingma-2015-adam}, una variante de descenso
 estocástico por gradiente con momentos adaptativos y decaimiento de pesos
 desacoplado. Sea \(g_k=\nabla_w\widehat R_{B_k}(w_k)\) el gradiente sobre el
-minibatch \(B_k\) de tamaño \(M=32\); la actualización extiende la de
+minibatch \(B_k\) de tamaño \(M=64\); la actualización extiende la de
 Petersen-Zech \cite[\S 10.4]{petersen-zech-2026-mathematical} con un
 término de decaimiento desacoplado:
 \begin{align}
@@ -532,7 +533,7 @@ multiplicativa:
 \[
 \mathrm{SwiGLU}(x)=W_d\bigl(\mathrm{SiLU}(W_gx)\odot W_ux\bigr),
 \]
-donde \(\mathrm{SiLU}(x)=x\cdot\sigma_{\rm logística}(x)\). La rama
+donde \(\mathrm{SiLU}(x)=x\cdot\sigma_{\text{logística}}(x)\). La rama
 \(W_ux\) propaga información mientras la rama
 \(\mathrm{SiLU}(W_gx)\) actúa como compuerta dinámica que modula
 coordenada a coordenada qué pasa. Empíricamente mejora el desempeño
@@ -600,9 +601,10 @@ positivo grande sugiere sobreajuste.
 \section{Protocolo experimental}
 \label{sec:protocol}
 
-Se comparan dos corpus de \(100\,000\) caracteres, \emph{Medium} (más
-homogéneo) y \emph{High} (mezcla de fuentes), con el mismo presupuesto de
-entrenamiento. El script \code{run\_effective\_tokens.py} ejecuta el
+Se comparan dos corpus de \(1\,000\,000\) caracteres, \emph{Medium} (más
+homogéneo: exclusivamente Jane Austen) y \emph{High} (mezcla de diez autores
+y géneros intercalados en fragmentos de 5\,000 caracteres), con el mismo
+presupuesto de entrenamiento. El script \code{run\_effective\_tokens.py} ejecuta el
 pipeline corpus por corpus y modelo por modelo y agrega resultados con
 \code{summarize\_results.py}. La Tabla~\ref{tab:hparams} resume los
 hiperparámetros comunes.
@@ -617,13 +619,13 @@ hiperparámetros comunes.
 Cantidad & Valor \\
 \midrule
 Tokenización & nivel carácter \\
-Contexto \(B\) & 64 \\
-Batch size \(M\) & 32 \\
+Contexto \(B\) & 128 \\
+Batch size \(M\) & 64 \\
 Dimensión \(d\) & 64 \\
 Capas/cabezas & 2 / 4 \\
 Optimizador & AdamW \\
 Learning rate \(\alpha\) & \(3\cdot 10^{-4}\) \\
-Pasos de entrenamiento & 2\,000 \\
+Pasos de entrenamiento & 5\,000 \\
 Runs por configuración & 1 \\
 \bottomrule
 \end{tabular}
@@ -697,8 +699,8 @@ LLaMA-style & High   & 1.7010 &  5.48 & \(0.0742\) \\
 \begin{figure}[h]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_results.pdf}
-\caption{A igual presupuesto, \emph{High} empeora pérdida, perplejidad y
-brecha en ambas arquitecturas.}
+\caption{A igual presupuesto, \emph{High} empeora pérdida y perplejidad
+pero exhibe menor brecha de generalización en ambas arquitecturas.}
 \label{fig:results}
 \end{figure}
 
@@ -715,9 +717,8 @@ D(\textit{High})>D(\textit{Medium})
 La pregunta \eqref{eq:question} se responde en sentido negativo para el riesgo
 absoluto. Sin embargo, la brecha de generalización exhibe el patrón inverso:
 \(\mathrm{gap}(\textit{High})<\mathrm{gap}(\textit{Medium})\) en ambas
-arquitecturas (\(0.040\) vs.\ \(0.068\) en Transformer; \(0.074\) vs.\
-\(0.099\) en LLaMA-style). Con \(10^6\) caracteres, la mayor diversidad reduce
-el sobreajuste, aunque sin reducir la pérdida absoluta.
+arquitecturas. Con \(10^6\) caracteres, la mayor diversidad reduce el
+sobreajuste, aunque sin reducir la pérdida absoluta.
 
 % =====================================================================
 \section{Discusión}
