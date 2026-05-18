@@ -114,7 +114,7 @@ HTML = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>nicolas-lm chat</title>
+<title>nicolas-lm</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -128,12 +128,14 @@ HTML = """<!DOCTYPE html>
                   border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
   .slider-group { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #aaa; }
   .slider-group input[type=range] { width: 80px; accent-color: #19c37d; }
-  .slider-group span { min-width: 28px; color: #ececec; }
+  .slider-group .val { min-width: 28px; color: #ececec; }
   .top-btn { background: none; border: 1px solid #555; color: #aaa; border-radius: 8px;
              padding: 5px 12px; font-size: 12px; cursor: pointer; white-space: nowrap; }
   .top-btn:hover { border-color: #aaa; color: #ececec; }
   #weights-btn { border-color: #7c6fcd; color: #7c6fcd; }
   #weights-btn:hover { border-color: #a89ee8; color: #a89ee8; background: #7c6fcd11; }
+  #lang-btn { border-color: #19c37d55; color: #19c37d; font-weight: 600; letter-spacing: .03em; }
+  #lang-btn:hover { border-color: #19c37d; background: #19c37d11; }
 
   /* messages */
   #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
@@ -159,8 +161,7 @@ HTML = """<!DOCTYPE html>
   #send-btn { background: #19c37d; color: #fff; border: none; border-radius: 10px;
               padding: 12px 18px; cursor: pointer; font-size: 18px; flex-shrink: 0; }
   #send-btn:disabled { background: #3a3a3a; cursor: not-allowed; }
-  #note { text-align: center; font-size: 11px; color: #666; margin: 6px auto 0;
-          max-width: 820px; }
+  #note { text-align: center; font-size: 11px; color: #666; margin: 6px auto 0; max-width: 820px; }
 
   /* weights modal */
   #w-overlay { display: none; position: fixed; inset: 0; background: #000a;
@@ -172,20 +173,40 @@ HTML = """<!DOCTYPE html>
   #w-close { position: absolute; top: 16px; right: 20px; background: none; border: none;
               color: #aaa; font-size: 22px; cursor: pointer; line-height: 1; }
   #w-close:hover { color: #fff; }
-  #w-panel h2 { font-size: 16px; font-weight: 700; color: #a89ee8; margin-bottom: 6px; }
-  #w-summary { font-size: 13px; color: #aaa; margin-bottom: 20px; line-height: 1.6; }
-  #w-summary strong { color: #ececec; }
-  .layer-card { background: #252540; border-radius: 10px; padding: 14px 16px;
-                margin-bottom: 10px; }
-  .layer-name { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px;
-                color: #7c6fcd; margin-bottom: 4px; }
-  .layer-desc { font-size: 13px; color: #ccc; margin-bottom: 8px; }
-  .layer-toggle { background: none; border: 1px solid #555; border-radius: 6px;
-                  color: #aaa; font-size: 11px; padding: 3px 10px; cursor: pointer; }
+  #w-panel h2 { font-size: 16px; font-weight: 700; color: #a89ee8; margin-bottom: 18px; }
+
+  /* stats grid */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
+  @media (max-width: 540px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card { background: #252540; border-radius: 10px; padding: 12px 14px; text-align: center; }
+  .stat-val { font-size: 17px; font-weight: 700; color: #a89ee8; }
+  .stat-lbl { font-size: 11px; color: #888; margin-top: 3px; }
+
+  /* group accordion */
+  .w-group { margin-bottom: 5px; }
+  .group-header { display: flex; align-items: center; gap: 9px; cursor: pointer;
+                  padding: 10px 14px; background: #252540; border-radius: 10px;
+                  user-select: none; transition: background .15s; }
+  .group-header:hover { background: #2d2d55; }
+  .group-arrow { font-size: 9px; color: #7c6fcd; display: inline-block; transition: transform .2s; }
+  .group-header.open .group-arrow { transform: rotate(90deg); }
+  .group-title { font-size: 13px; font-weight: 600; color: #ccc; flex: 1; }
+  .group-meta { font-size: 11px; color: #666; }
+  .group-body { display: none; padding: 5px 0 6px 0; }
+  .group-body.open { display: block; }
+
+  /* layer card */
+  .layer-card { background: #1e1e38; border-left: 2px solid #7c6fcd44; border-radius: 0 8px 8px 0;
+                padding: 11px 14px; margin: 3px 0 3px 14px; }
+  .layer-name { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11.5px;
+                color: #7c6fcd; margin-bottom: 3px; }
+  .layer-desc { font-size: 12px; color: #bbb; margin-bottom: 7px; }
+  .layer-toggle { background: none; border: 1px solid #444; border-radius: 5px;
+                  color: #888; font-size: 11px; padding: 3px 9px; cursor: pointer; }
   .layer-toggle:hover { border-color: #7c6fcd; color: #a89ee8; }
-  .layer-values { display: none; margin-top: 10px; font-family: 'SFMono-Regular', Consolas, monospace;
+  .layer-values { display: none; margin-top: 8px; font-family: 'SFMono-Regular', Consolas, monospace;
                   font-size: 11px; color: #19c37d; background: #111128;
-                  border-radius: 6px; padding: 10px 12px; line-height: 1.7; word-break: break-all; }
+                  border-radius: 5px; padding: 9px 12px; line-height: 1.8; word-break: break-all; }
   .layer-values.open { display: block; }
   #w-loading { text-align: center; color: #7c6fcd; padding: 40px; font-size: 14px; }
 </style>
@@ -196,20 +217,21 @@ HTML = """<!DOCTYPE html>
   <select id="model-select">
     {% for name in models %}<option value="{{ name }}">{{ name }}</option>{% endfor %}
   </select>
-  <div class="slider-group">🌡 Temp
+  <div class="slider-group"><span data-i18n="temp">🌡 Temp</span>
     <input type="range" id="temp" min="0.3" max="1.5" step="0.05" value="0.8">
-    <span id="temp-val">0.8</span>
+    <span class="val" id="temp-val">0.8</span>
   </div>
   <div class="slider-group">Top-k
     <input type="range" id="topk" min="0" max="80" step="5" value="20">
-    <span id="topk-val">20</span>
+    <span class="val" id="topk-val">20</span>
   </div>
   <div class="slider-group">Tokens
     <input type="range" id="tokens" min="50" max="600" step="50" value="200">
-    <span id="tokens-val">200</span>
+    <span class="val" id="tokens-val">200</span>
   </div>
-  <button id="weights-btn" class="top-btn">⚛ Ver pesos</button>
-  <button id="clear-btn" class="top-btn">Limpiar</button>
+  <button id="weights-btn" class="top-btn" data-i18n="weightsBtn">⚛ Ver pesos</button>
+  <button id="clear-btn"   class="top-btn" data-i18n="clearBtn">Limpiar</button>
+  <button id="lang-btn"    class="top-btn">EN</button>
 </div>
 
 <div id="messages"></div>
@@ -219,40 +241,118 @@ HTML = """<!DOCTYPE html>
     <textarea id="prompt" rows="1" placeholder="Escribe algo y el modelo lo continúa…"></textarea>
     <button id="send-btn">&#9650;</button>
   </div>
-  <div id="note">Estos modelos completan texto en estilo literario inglés — no responden preguntas.</div>
+  <div id="note" data-i18n="note">Estos modelos completan texto en estilo literario inglés — no responden preguntas.</div>
 </div>
 
 <!-- weights modal -->
 <div id="w-overlay">
   <div id="w-panel">
     <button id="w-close">×</button>
-    <h2 id="w-title">Pesos del modelo</h2>
-    <div id="w-summary"></div>
+    <h2 id="w-title"></h2>
+    <div id="w-stats"></div>
     <div id="w-layers"></div>
-    <div id="w-loading" style="display:none">Cargando pesos…</div>
+    <div id="w-loading" style="display:none"></div>
   </div>
 </div>
 
 <script>
-const msgs = document.getElementById('messages');
-const promptEl = document.getElementById('prompt');
-const sendBtn = document.getElementById('send-btn');
+// ── i18n ──────────────────────────────────────────────────────────────────────
+const STRINGS = {
+  es: {
+    temp:       '🌡 Temp',
+    weightsBtn: '⚛ Ver pesos',
+    clearBtn:   'Limpiar',
+    placeholder:'Escribe algo y el modelo lo continúa…',
+    note:       'Estos modelos completan texto en estilo literario inglés — no responden preguntas.',
+    modalTitle: k => 'Pesos de ' + k,
+    loading:    'Cargando pesos…',
+    totalParams:'parámetros totales',
+    tensorsLbl: 'tensores',
+    vocabLbl:   'caracteres (vocab)',
+    contextLbl: 'tokens de contexto',
+    groupEmb:   'Embedding',
+    groupBlock: n => 'Bloque ' + n,
+    groupNorm:  'Normalización final',
+    groupHead:  'Cabeza de predicción',
+    scalarDesc: (n, d) => n.toLocaleString() + ' escalares en ℝ^' + d,
+    matrixDesc: (r, c) => r + ' vectores en ℝ^' + c + '  (' + r + '×' + c + ')',
+    paramsOf:   n => n.toLocaleString() + ' parámetros',
+    groupOf:    n => n + ' ' + (n === 1 ? 'tensor' : 'tensores'),
+    showVals:   'Ver primeros valores',
+    hideVals:   'Ocultar valores',
+    langNext:   'EN',
+  },
+  en: {
+    temp:       '🌡 Temp',
+    weightsBtn: '⚛ View weights',
+    clearBtn:   'Clear',
+    placeholder:'Type something and the model continues it…',
+    note:       'These models complete text in English literary style — they do not answer questions.',
+    modalTitle: k => 'Weights of ' + k,
+    loading:    'Loading weights…',
+    totalParams:'total parameters',
+    tensorsLbl: 'tensors',
+    vocabLbl:   'chars (vocab)',
+    contextLbl: 'context tokens',
+    groupEmb:   'Embedding',
+    groupBlock: n => 'Block ' + n,
+    groupNorm:  'Final normalization',
+    groupHead:  'Prediction head',
+    scalarDesc: (n, d) => n.toLocaleString() + ' scalars in ℝ^' + d,
+    matrixDesc: (r, c) => r + ' vectors in ℝ^' + c + '  (' + r + '×' + c + ')',
+    paramsOf:   n => n.toLocaleString() + ' parameters',
+    groupOf:    n => n + ' ' + (n === 1 ? 'tensor' : 'tensors'),
+    showVals:   'Show first values',
+    hideVals:   'Hide values',
+    langNext:   'ES',
+  }
+};
 
-// sliders
-['temp','topk','tokens'].forEach(id => {
-  const el = document.getElementById(id);
-  const val = document.getElementById(id+'-val');
+let lang = 'es';
+const T = () => STRINGS[lang];
+let lastData = null;
+let lastKey  = null;
+
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = T()[el.dataset.i18n];
+    if (typeof v === 'string') el.textContent = v;
+  });
+  document.getElementById('prompt').placeholder = T().placeholder;
+  document.getElementById('lang-btn').textContent = T().langNext;
+  if (lastData) renderWeights(lastData);
+}
+
+document.getElementById('lang-btn').addEventListener('click', () => {
+  lang = lang === 'es' ? 'en' : 'es';
+  applyLang();
+});
+
+applyLang();
+
+// ── sliders ───────────────────────────────────────────────────────────────────
+['temp', 'topk', 'tokens'].forEach(id => {
+  const el  = document.getElementById(id);
+  const val = document.getElementById(id + '-val');
   val.textContent = el.value;
   el.addEventListener('input', () => val.textContent = el.value);
 });
 
-document.getElementById('clear-btn').addEventListener('click', () => msgs.innerHTML = '');
+document.getElementById('clear-btn').addEventListener('click',
+  () => document.getElementById('messages').innerHTML = '');
+
+// ── chat ──────────────────────────────────────────────────────────────────────
+const msgs     = document.getElementById('messages');
+const promptEl = document.getElementById('prompt');
+const sendBtn  = document.getElementById('send-btn');
 
 function addMsg(role, text) {
   const div = document.createElement('div');
   div.className = 'msg ' + (role === 'user' ? 'user' : 'assistant');
-  div.innerHTML = `<div class="avatar ${role==='user'?'u':'a'}">${role==='user'?'N':'🤖'}</div>
-                   <div class="bubble">${text}</div>`;
+  div.innerHTML = '<div class="avatar ' + (role==='user'?'u':'a') + '">'
+                + (role==='user' ? 'N' : '🤖') + '</div>'
+                + '<div class="bubble">' + text + '</div>';
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
 }
@@ -297,51 +397,130 @@ promptEl.addEventListener('input', () => {
   promptEl.style.height = Math.min(promptEl.scrollHeight, 160) + 'px';
 });
 
-// ── weights panel ──────────────────────────────────────────────────────────
-const overlay = document.getElementById('w-overlay');
-const wTitle  = document.getElementById('w-title');
-const wSummary= document.getElementById('w-summary');
-const wLayers = document.getElementById('w-layers');
-const wLoading= document.getElementById('w-loading');
-
+// ── weights panel ──────────────────────────────────────────────────────────────
+const overlay  = document.getElementById('w-overlay');
+const wTitle   = document.getElementById('w-title');
+const wStats   = document.getElementById('w-stats');
+const wLayers  = document.getElementById('w-layers');
+const wLoading = document.getElementById('w-loading');
 document.getElementById('weights-btn').addEventListener('click', openWeights);
-document.getElementById('w-close').addEventListener('click', () => overlay.classList.remove('open'));
-overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+document.getElementById('w-close').addEventListener('click',
+  () => overlay.classList.remove('open'));
+overlay.addEventListener('click',
+  e => { if (e.target === overlay) overlay.classList.remove('open'); });
+
+function getGroup(name) {
+  const parts = name.split('.');
+  for (let i = 0; i < parts.length; i++)
+    if (/^\\d+$/.test(parts[i])) return parts.slice(0, i + 1).join('.');
+  return parts[0];
+}
+
+function groupLabel(g) {
+  if (g === 'embedding') return T().groupEmb;
+  if (g === 'norm')      return T().groupNorm;
+  if (g === 'lm_head')   return T().groupHead;
+  const m = g.match(/^blocks\\.(\\d+)$/);
+  if (m) return T().groupBlock(m[1]);
+  return g;
+}
+
+function layerDesc(shape, numel) {
+  if (shape.length === 1) return T().scalarDesc(numel, shape[0]);
+  if (shape.length === 2) return T().matrixDesc(shape[0], shape[1]);
+  return shape.join('×');
+}
+
+function renderWeights(d) {
+  wTitle.textContent = T().modalTitle(lastKey);
+  wLoading.style.display = 'none';
+
+  wStats.innerHTML =
+    '<div class="stats-grid">'
+    + '<div class="stat-card"><div class="stat-val">' + d.total_params.toLocaleString()
+    + '</div><div class="stat-lbl" data-i18n="totalParams">' + T().totalParams + '</div></div>'
+    + '<div class="stat-card"><div class="stat-val">' + d.num_layers
+    + '</div><div class="stat-lbl" data-i18n="tensorsLbl">' + T().tensorsLbl + '</div></div>'
+    + '<div class="stat-card"><div class="stat-val">' + d.vocab_size
+    + '</div><div class="stat-lbl" data-i18n="vocabLbl">' + T().vocabLbl + '</div></div>'
+    + '<div class="stat-card"><div class="stat-val">' + d.block_size
+    + '</div><div class="stat-lbl" data-i18n="contextLbl">' + T().contextLbl + '</div></div>'
+    + '</div>';
+
+  // group by module prefix
+  const groupMap = new Map();
+  d.layers.forEach(layer => {
+    const g = getGroup(layer.name);
+    if (!groupMap.has(g)) groupMap.set(g, []);
+    groupMap.get(g).push(layer);
+  });
+
+  wLayers.innerHTML = '';
+  let first = true;
+  groupMap.forEach((layers, g) => {
+    const groupParams = layers.reduce((s, l) => s + l.numel, 0);
+
+    const section = document.createElement('div');
+    section.className = 'w-group';
+
+    const header = document.createElement('div');
+    header.className = 'group-header' + (first ? ' open' : '');
+    header.innerHTML =
+      '<span class="group-arrow">▶</span>'
+      + '<span class="group-title">' + groupLabel(g) + '</span>'
+      + '<span class="group-meta">' + T().groupOf(layers.length)
+      + ' &nbsp;·&nbsp; ' + T().paramsOf(groupParams) + '</span>';
+
+    const body = document.createElement('div');
+    body.className = 'group-body' + (first ? ' open' : '');
+
+    layers.forEach(layer => {
+      const sampleStr = layer.sample.map(v => v.toFixed(5)).join(', ')
+                      + (layer.has_more ? ', …' : '');
+      const card = document.createElement('div');
+      card.className = 'layer-card';
+      card.innerHTML =
+        '<div class="layer-name">' + layer.name + '</div>'
+        + '<div class="layer-desc">' + layerDesc(layer.shape, layer.numel)
+        + ' &nbsp;·&nbsp; ' + T().paramsOf(layer.numel) + '</div>'
+        + '<button class="layer-toggle" onclick="toggleVals(this)">' + T().showVals + '</button>'
+        + '<div class="layer-values">[' + sampleStr + ']</div>';
+      body.appendChild(card);
+    });
+
+    header.addEventListener('click', () => {
+      header.classList.toggle('open');
+      body.classList.toggle('open');
+    });
+
+    section.appendChild(header);
+    section.appendChild(body);
+    wLayers.appendChild(section);
+    first = false;
+  });
+}
 
 async function openWeights() {
   overlay.classList.add('open');
-  wSummary.innerHTML = ''; wLayers.innerHTML = ''; wLoading.style.display = 'block';
   const key = document.getElementById('model-select').value;
-  wTitle.textContent = 'Pesos de ' + key;
+
+  if (lastData && lastKey === key) { renderWeights(lastData); return; }
+
+  wStats.innerHTML = ''; wLayers.innerHTML = '';
+  wLoading.textContent = T().loading;
+  wLoading.style.display = 'block';
+  wTitle.textContent = T().modalTitle(key);
+  lastKey = key;
+
   const resp = await fetch('/weights?model=' + encodeURIComponent(key));
-  const d = await resp.json();
-  wLoading.style.display = 'none';
-
-  wSummary.innerHTML =
-    `Este modelo tiene <strong>${d.total_params.toLocaleString()} parámetros</strong>
-     organizados en <strong>${d.layers.length} tensores</strong>.
-     Vocabulario: <strong>${d.vocab_size} caracteres</strong> ·
-     Contexto: <strong>${d.block_size} tokens</strong>.
-     Cada parámetro es un número real de 32 bits (float32) aprendido durante el entrenamiento.`;
-
-  d.layers.forEach((layer, i) => {
-    const card = document.createElement('div');
-    card.className = 'layer-card';
-    const sampleStr = layer.sample.map(v => v.toFixed(5)).join(', ')
-                    + (layer.has_more ? ', …' : '');
-    card.innerHTML = `
-      <div class="layer-name">${layer.name}</div>
-      <div class="layer-desc">${layer.desc} &nbsp;·&nbsp; ${layer.numel.toLocaleString()} parámetros</div>
-      <button class="layer-toggle" onclick="toggleVals(this)">Ver primeros valores</button>
-      <div class="layer-values">[${sampleStr}]</div>`;
-    wLayers.appendChild(card);
-  });
+  lastData = await resp.json();
+  renderWeights(lastData);
 }
 
 function toggleVals(btn) {
   const vals = btn.nextElementSibling;
   const open = vals.classList.toggle('open');
-  btn.textContent = open ? 'Ocultar valores' : 'Ver primeros valores';
+  btn.textContent = open ? T().hideVals : T().showVals;
 }
 </script>
 </body>
