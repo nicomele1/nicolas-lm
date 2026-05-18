@@ -151,7 +151,6 @@ def test_attention_head_rejects_invalid_dropout() -> None:
         )
 
 
-from nicolasm.modules.attention import MultiHeadCausalSelfAttention
 
 def test_multi_head_attention_output_shape() -> None:
     batch_size = 2
