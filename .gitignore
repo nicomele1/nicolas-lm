@@ -217,12 +217,49 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# NicolásLM generated artifacts
-data/raw/
-data/corpora/
-experiments/runs/
-experiments/results/
-experiments/effective_tokens/
-experiments/reports/*/
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+
+# Data and model artifacts
+data/raw/*
+data/processed/*
+data/tokenizers/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/tokenizers/.gitkeep
+
+# Experiments
+experiments/runs/*
+experiments/plots/*
+experiments/reports/*
+!experiments/runs/.gitkeep
+!experiments/plots/.gitkeep
+!experiments/reports/.gitkeep
+
+# Checkpoints
 *.pt
-*.zip
+*.pth
+*.ckpt
+*.bin
+
+# LaTeX build files
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Videos
+videos/renders/*
+!videos/renders/.gitkeep
+
+# OS/editor
+.DS_Store
+.vscode/

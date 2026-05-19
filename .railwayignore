@@ -1,0 +1,11 @@
+data/pdfs/
+notes/*.pdf
+notes/*.tex
+notes/figures/
+notes/references.bib
+docs/
+videos/
+tests/
+.venv/
+__pycache__/
+*.pyc
