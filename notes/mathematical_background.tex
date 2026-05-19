@@ -1,0 +1,3717 @@
+\documentclass[11pt]{report}
+
+% Idioma y codificación
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noquoting]{babel}
+
+% Matemáticas
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{mathtools}
+
+% Símbolos y fuentes útiles
+\usepackage{mathrsfs}
+\usepackage{bm}
+
+% Cajas de definiciones
+\usepackage[most]{tcolorbox}
+
+% Márgenes y formato general
+\usepackage[a4paper,margin=2.8cm]{geometry}
+\usepackage{setspace}
+\usepackage{enumitem}
+
+% Hipervínculos
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+% Citas bibliográficas
+\usepackage[numbers]{natbib}
+
+\tcbset{
+    enhanced,
+    breakable,
+    colback=blue!5,
+    colframe=blue!40,
+    boxrule=0.5pt,
+    sharp corners,
+    left=6pt,
+    right=6pt,
+    top=6pt,
+    bottom=6pt
+}
+
+% ==========================================================
+% Sistema de numeración propio
+% ==========================================================
+% Capítulos numerados 1, 2, ...; secciones 1.1, 1.2, ...; subsecciones 1.1.1, ...
+% Todas las entidades matemáticas comparten un contador único por sección,
+% de modo que las definiciones, teoremas, etc. se numeran como X.Y.Z.
+
+\theoremstyle{definition}
+\newtheorem{definicion}{Definición}[section]
+\newtheorem{ejemplo}[definicion]{Ejemplo}
+\newtheorem{observacion}[definicion]{Observación}
+
+\theoremstyle{plain}
+\newtheorem{teorema}[definicion]{Teorema}
+\newtheorem{lema}[definicion]{Lema}
+\newtheorem{proposicion}[definicion]{Proposición}
+\newtheorem{corolario}[definicion]{Corolario}
+
+% Ecuaciones también por sección
+\numberwithin{equation}{section}
+
+% Comandos útiles
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\VV}{\mathbb{V}}
+\newcommand{\BB}{\mathcal{B}}
+\renewcommand{\AA}{\mathcal{A}}
+\newcommand{\D}{\mathcal{D}}
+\newcommand{\V}{\mathcal{V}}
+\newcommand{\HH}{\mathcal{H}}
+\newcommand{\softmax}{\operatorname{softmax}}
+\newcommand{\Attn}{\operatorname{Attn}}
+\newcommand{\LN}{\operatorname{LayerNorm}}
+\newcommand{\RMSN}{\operatorname{RMSNorm}}
+\newcommand{\FFN}{\operatorname{FFN}}
+\newcommand{\SwiGLU}{\operatorname{SwiGLU}}
+\newcommand{\SiLU}{\operatorname{SiLU}}
+\newcommand{\GELU}{\operatorname{GELU}}
+\newcommand{\KL}{\operatorname{KL}}
+\newcommand{\CE}{\operatorname{CE}}
+\newcommand{\PPL}{\operatorname{PPL}}
+
+\title{Notas matemáticas complementarias del proyecto \texttt{nicolas-lm}}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+
+
+\chapter{Teoría de la probabilidad}
+
+Estas notas presentan los fundamentos matemáticos del proyecto \texttt{nicolas-lm}. Comenzamos con teoría de la probabilidad (Capítulo~1), continuamos con aprendizaje estadístico (Capítulo~2) y redes neuronales feedforward (Capítulo~3), aplicamos lo anterior a los modelos autorregresivos implementados en el código (Capítulo~4) y cerramos con métodos de entrenamiento basados en descenso de gradiente (Capítulo~5). La presentación combina material de referencia estándar; las fuentes principales son los textos de \citet{petersen-zech-2026} y \citet{calin-2020}, complementados puntualmente con \citet{wegner-2024}. 
+
+
+\section{Sigma-álgebras, topologías y medidas}
+
+Sea \(\Omega\) un conjunto, y denotemos por \(2^\Omega\) el conjunto potencia de \(\Omega\).
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Un subconjunto \(\mathcal{A}\subseteq 2^\Omega\) se llama una \textbf{sigma-álgebra}\footnote{Usamos esta notación en lugar de la más común ``\(\sigma\)-álgebra'' para evitar confusión con la función de activación \(\sigma\).} sobre \(\Omega\) si satisface
+
+\begin{enumerate}
+    \item[(i)] \(\Omega\in\mathcal{A}\),
+    \item[(ii)] \(A^c\in\mathcal{A}\) siempre que \(A\in\mathcal{A}\),
+    \item[(iii)] \(\bigcup_{i\in\mathbb{N}} A_i\in\mathcal{A}\) siempre que \(A_i\in\mathcal{A}\) para todo \(i\in\mathbb{N}\).
+\end{enumerate}
+\end{definicion}
+\end{tcolorbox}
+
+Para una sigma-álgebra \(\mathcal{A}\) sobre \(\Omega\), la pareja \((\Omega,\mathcal{A})\) también se denomina un \textbf{espacio medible}. Para un espacio medible, un subconjunto \(A\subseteq \Omega\) se llama \textbf{medible} si \(A\in\mathcal{A}\). Los conjuntos medibles también se llaman \textbf{eventos}.
+
+Otro sistema clave de subconjuntos de \(\Omega\) es el de una topología.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Un subconjunto \(\mathcal{T}\subseteq 2^\Omega\) se llama una \textbf{topología} sobre \(\Omega\) si satisface
+
+\begin{enumerate}
+    \item[(i)] \(\emptyset,\Omega\in\mathcal{T}\),
+    \item[(ii)] \(\bigcap_{j=1}^{n} O_j\in\mathcal{T}\) siempre que \(n\in\mathbb{N}\) y \(O_1,\ldots,O_n\in\mathcal{T}\),
+    \item[(iii)] \(\bigcup_{i\in I}O_i\in\mathcal{T}\) siempre que para un conjunto de índices \(I\) se tenga \(O_i\in\mathcal{T}\) para todo \(i\in I\).
+\end{enumerate}
+\end{definicion}
+\end{tcolorbox}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+Si \(\mathcal{T}\) es una topología sobre \(\Omega\), llamamos a \((\Omega,\mathcal{T})\) un \textbf{espacio topológico}, y un conjunto \(O\subseteq\Omega\) se llama \textbf{abierto} si y solo si \(O\in\mathcal{T}\).
+\end{tcolorbox}
+
+\begin{observacion}
+Las dos nociones difieren en que una topología permite uniones de conjuntos arbitrarias, posiblemente no numerables, pero únicamente intersecciones finitas, mientras que una sigma-álgebra permite uniones e intersecciones numerables.
+\end{observacion}
+
+\begin{ejemplo}
+Sea \(d\in\mathbb{N}\) y denotemos por \(B_\varepsilon(x)=\{y\in\mathbb{R}^d\mid \|y-x\|<\varepsilon\}\) el conjunto de puntos cuya distancia euclidiana a \(x\) es menor que \(\varepsilon\). Entonces, para todo \(A\subseteq\mathbb{R}^d\), la topología más pequeña sobre \(A\) que contiene \(A\cap B_\varepsilon(x)\) para todo \(\varepsilon>0\), \(x\in\mathbb{R}^d\), se llama la \textbf{topología euclidiana} sobre \(A\).
+\end{ejemplo}
+
+Si \((\Omega,\mathcal{T})\) es un espacio topológico, entonces la \textbf{sigma-álgebra de Borel} se refiere a la sigma-álgebra más pequeña sobre \(\Omega\) que contiene todos los conjuntos abiertos, es decir, todos los elementos de \(\mathcal{T}\). A lo largo de este libro, los subconjuntos de \(\mathbb{R}^d\) siempre se entienden equipados con la topología euclidiana. La sigma-álgebra de Borel sobre \(\mathbb{R}^d\) se denota por \(\mathcal{B}_d\).
+
+Ahora podemos introducir las medidas.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sea \((\Omega,\mathcal{A})\) un espacio medible. Una aplicación \(\mu:\mathcal{A}\to[0,\infty]\) se llama una \textbf{medida} si satisface
+
+\begin{enumerate}
+    \item[(i)] \(\mu(\emptyset)=0\),
+    \item[(ii)] para toda sucesión \((A_i)_{i\in\mathbb{N}}\subseteq\mathcal{A}\) tal que \(A_i\cap A_j=\emptyset\) siempre que \(i\neq j\), se tiene
+    \begin{equation*}
+        \mu\left(\bigcup_{i\in\mathbb{N}} A_i\right)
+        =
+        \sum_{i\in\mathbb{N}}\mu(A_i).
+    \end{equation*}
+\end{enumerate}
+
+Decimos que la medida es \textbf{finita} si \(\mu(\Omega)<\infty\), y que es \textbf{sigma-finita} si existe una sucesión \((A_i)_{i\in\mathbb{N}}\subseteq\mathcal{A}\) tal que \(\Omega=\bigcup_{i\in\mathbb{N}}A_i\) y \(\mu(A_i)<1\) para todo \(i\in\mathbb{N}\). En caso de que \(\mu(\Omega)=1\), la medida se llama \textbf{medida de probabilidad}.
+\end{definicion}
+\end{tcolorbox}
+
+\begin{ejemplo}
+Se puede mostrar que existe una única medida \(\lambda\) sobre \((\mathbb{R}^d,\mathcal{B}_d)\) tal que, para todos los conjuntos de la forma \(\times_{i=1}^{d}]a_i,b_i\), con \(-\infty<a_i\leq b_i<\infty\), se tiene
+\begin{equation*}
+    \lambda\left(\times_{i=1}^{d}]a_i,b_i\right)
+    =
+    \prod_{i=1}^{d}(b_i-a_i).
+\end{equation*}
+Esta medida se llama la \textbf{medida de Lebesgue}.
+\end{ejemplo}
+
+Si \(\mu\) es una medida sobre el espacio medible \((\Omega,\mathcal{A})\), entonces la terna \((\Omega,\mathcal{A},\mu)\) se llama un \textbf{espacio de medida}. En caso de que \(\mu\) sea una medida de probabilidad, se llama un \textbf{espacio de probabilidad}.
+
+Sea \((\Omega,\mathcal{A},\mu)\) un espacio de medida. Un subconjunto \(N\subseteq \Omega\) se llama \textbf{conjunto nulo} si \(N\) es medible y \(\mu(N)=0\). Además, se dice que una igualdad o desigualdad se cumple \(\mu\)-\textbf{casi en todas partes} o \(\mu\)-\textbf{casi seguramente}, si se satisface en el complemento de un conjunto nulo. En caso de que \(\mu\) sea claro por el contexto, simplemente escribimos ``casi en todas partes'' o ``casi seguramente''. Usualmente esto se refiere a la medida de Lebesgue.
+
+\section{Variables aleatorias}
+
+\subsection{Medibilidad de funciones}
+
+Para definir variables aleatorias, primero necesitamos recordar la medibilidad de funciones.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sean \((\Omega_1,\mathcal{A}_1)\) y \((\Omega_2,\mathcal{A}_2)\) dos espacios medibles. Una función \(f:\Omega_1\to\Omega_2\) se llama \textbf{medible} si
+\begin{equation*}
+    f^{-1}(A_2)=\{\omega\in\Omega_1\mid f(\omega)\in A_2\}\in\mathcal{A}_1
+    \qquad
+    \text{para todo } A_2\in\mathcal{A}_2.
+\end{equation*}
+
+Una aplicación \(X:\Omega_1\to\Omega_2\) se llama una \(\Omega_2\)-\textbf{variable aleatoria valuada} si es medible.
+\end{definicion}
+\end{tcolorbox}
+
+\begin{observacion}
+Señalamos de nuevo los paralelos con los espacios topológicos: una función \(f:\Omega_1\to\Omega_2\) entre dos espacios topológicos \((\Omega_1,\mathcal{T}_1)\) y \((\Omega_2,\mathcal{T}_2)\) se llama continua si \(f^{-1}(O_2)\in\mathcal{T}_1\) para todo \(O_2\in\mathcal{T}_2\).
+\end{observacion}
+
+Sea \(\Omega_1\) un conjunto y sea \((\Omega_2,\mathcal{A}_2)\) un espacio medible. Para \(X:\Omega_1\to\Omega_2\), podemos preguntar por la sigma-álgebra más pequeña \(\mathcal{A}_X\) sobre \(\Omega_1\), tal que \(X\) sea medible como una aplicación de \((\Omega_1,\mathcal{A}_X)\) a \((\Omega_2,\mathcal{A}_2)\). Claramente, para toda sigma-álgebra \(\mathcal{A}_1\) sobre \(\Omega_1\), \(X\) es medible como aplicación de \((\Omega_1,\mathcal{A}_1)\) a \((\Omega_2,\mathcal{A}_2)\) si y solo si todo \(A\in\mathcal{A}_X\) pertenece a \(\mathcal{A}_1\); en otras palabras, \(\mathcal{A}_X\) es una subsigma-álgebra de \(\mathcal{A}_1\). Es fácil comprobar que \(\mathcal{A}_X\) está dada mediante la siguiente definición.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sea \(X:\Omega_1\to\Omega_2\) una variable aleatoria. Entonces
+\begin{equation*}
+    \mathcal{A}_X:=\{X^{-1}(A_2)\mid A_2\in\mathcal{A}_2\}\subseteq 2^{\Omega_1}
+\end{equation*}
+es la \textbf{sigma-álgebra inducida por \(X\)} sobre \(\Omega_1\).
+\end{definicion}
+\end{tcolorbox}
+
+\subsection{Distribución y esperanza}
+
+Ahora sea \((\Omega_1,\mathcal{A}_1,\mathbb{P})\) un espacio de probabilidad, y sea \((\Omega_2,\mathcal{A}_2)\) un espacio medible. Entonces \(X\) induce naturalmente una medida sobre \((\Omega_2,\mathcal{A}_2)\) vía
+\begin{equation*}
+    \mathbb{P}_X[A_2]:=\mathbb{P}[X^{-1}(A_2)]
+    \qquad
+    \text{para todo } A_2\in\mathcal{A}_2.
+\end{equation*}
+Nótese que, debido a la medibilidad de \(X\), se cumple \(X^{-1}(A_2)\in\mathcal{A}_1\), de modo que \(\mathbb{P}_X\) está bien definida.
+
+Antes de introducir la noción de densidad, recordemos dos conceptos básicos de teoría de la medida. Si \(\Omega\) es un conjunto, la \textbf{medida de conteo} sobre \((\Omega,2^\Omega)\) es la medida \(\#\) definida por
+\begin{equation*}
+    \#(A)
+    :=
+    \begin{cases}
+        \text{el número de elementos de } A, & \text{si } A \text{ es finito},\\
+        \infty, & \text{si } A \text{ es infinito}.
+    \end{cases}
+\end{equation*}
+En particular, sobre un conjunto finito o numerable, una medida de probabilidad puede entenderse como una medida absolutamente continua respecto de la medida de conteo.
+
+Sean ahora \((\Omega,\mathcal{A})\) un espacio medible y \(\mu,\nu\) dos medidas sobre \((\Omega,\mathcal{A})\). Decimos que \(\mu\) es \textbf{absolutamente continua respecto de} \(\nu\), y escribimos \(\mu\ll\nu\), si
+\begin{equation*}
+    \nu(A)=0
+    \quad\Longrightarrow\quad
+    \mu(A)=0
+    \qquad
+    \text{para todo } A\in\mathcal{A}.
+\end{equation*}
+Es decir, \(\mu\) no asigna masa positiva a conjuntos que son nulos para \(\nu\).
+
+El resultado fundamental que justifica la aparición de densidades es el teorema de Radon--Nikodym.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{teorema}[Radon--Nikodym]
+Sean \((\Omega,\mathcal{A})\) un espacio medible y sean \(\mu,\nu\) dos medidas sigma-finitas sobre \((\Omega,\mathcal{A})\). Si \(\mu\ll\nu\), entonces existe una función medible \(f:\Omega\to[0,\infty]\) tal que
+\begin{equation*}
+    \mu(A)
+    =
+    \int_A f\,d\nu
+    \qquad
+    \text{para todo } A\in\mathcal{A}.
+\end{equation*}
+Además, \(f\) es única \(\nu\)-casi en todas partes. Esta función se denota por
+\begin{equation*}
+    f=\frac{d\mu}{d\nu}
+\end{equation*}
+y se llama la \textbf{derivada de Radon--Nikodym} de \(\mu\) respecto de \(\nu\).
+
+Si además \(\mu\) es finita, entonces
+\begin{equation*}
+    \int_\Omega f\,d\nu
+    =
+    \mu(\Omega)
+    <
+    \infty,
+\end{equation*}
+de modo que \(f\in L^1(\nu)\). En particular, si \(\mu\) es una medida de probabilidad, entonces \(d\mu/d\nu\in L^1(\nu)\) y
+\begin{equation*}
+    \int_\Omega \frac{d\mu}{d\nu}\,d\nu
+    =
+    1.
+\end{equation*}
+\end{teorema}
+\end{tcolorbox}
+
+En particular, si \(\mu\ll\lambda\), donde \(\lambda\) es la medida de Lebesgue sobre \((\mathbb{R}^d,\mathcal{B}_d)\), entonces existe una función integrable \(f:\mathbb{R}^d\to[0,\infty]\) tal que
+\begin{equation*}
+    \mu(A)
+    =
+    \int_A f(x)\,dx
+    \qquad
+    \text{para todo } A\in\mathcal{B}_d.
+\end{equation*}
+En este caso decimos que \(\mu\) tiene densidad \(f\) respecto de la medida de Lebesgue. Si, en cambio, \(\mu\) es una medida de probabilidad sobre un conjunto finito o numerable \(\Omega\), entonces \(\mu\ll \#\), y su densidad respecto de la medida de conteo es simplemente la función de masa
+\begin{equation*}
+    p(\omega)
+    =
+    \frac{d\mu}{d\#}(\omega)
+    =
+    \mu(\{\omega\}).
+\end{equation*}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+La medida \(\mathbb{P}_X\) se llama la \textbf{distribución} de \(X\). Si \((\Omega_2,\mathcal{A}_2)=(\mathbb{R}^d,\mathcal{B}_d)\), y \(\mathbb{P}_X\ll\lambda\), donde \(\lambda\) denota la medida de Lebesgue sobre \(\mathbb{R}^d\), entonces por el teorema de Radon--Nikodym existe una función medible \(f_X:\mathbb{R}^d\to[0,\infty]\) tal que
+\begin{equation*}
+    \mathbb{P}_X[A]
+    =
+    \int_A f_X(x)\,dx
+    \qquad
+    \text{para todo } A\in\mathcal{B}_d.
+\end{equation*}
+Equivalentemente,
+\begin{equation*}
+    f_X
+    =
+    \frac{d\mathbb{P}_X}{d\lambda}.
+\end{equation*}
+Entonces \(f_X\) se llama la \textbf{densidad de Lebesgue} de \(X\).
+
+En probabilidad aplicada se asume con frecuencia que las distribuciones inducidas por las variables aleatorias reales o vectoriales son absolutamente continuas respecto de la medida de Lebesgue. Bajo esta hipótesis, la distribución de \(X\) puede describirse mediante su densidad \(f_X\), y las probabilidades se calculan mediante integrales de la forma
+\begin{equation*}
+    \mathbb{P}[X\in A]
+    =
+    \mathbb{P}_X[A]
+    =
+    \int_A f_X(x)\,dx.
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+Sea \((\Omega,\mathcal{A},\mathbb{P})\) un espacio de probabilidad, sea \(X:\Omega\to\mathbb{R}^d\) una variable aleatoria valuada en \(\mathbb{R}^d\). Entonces llamamos a la integral de Lebesgue
+\begin{equation*}
+    \mathbb{E}[X]
+    :=
+    \int_\Omega X(\omega)\,d\mathbb{P}(\omega)
+    =
+    \int_{\mathbb{R}^d} x\,d\mathbb{P}_X(x)
+    \tag{A.2.1}
+\end{equation*}
+la \textbf{esperanza} de \(X\). Además, para \(k\in\mathbb{N}\) decimos que \(X\) tiene \textbf{\(k\)-ésimo momento finito} si \(\mathbb{E}[\|X\|^k]<\infty\). De manera similar, para una medida de probabilidad \(\mu\) sobre \(\mathbb{R}^d\) y \(k\in\mathbb{N}\), decimos que \(\mu\) tiene \(k\)-ésimo momento finito si
+\begin{equation*}
+    \int_{\mathbb{R}^d} \|x\|^k\,d\mu(x)<\infty.
+\end{equation*}
+Además, la matriz
+\begin{equation*}
+    \int_\Omega
+    (X(\omega)-\mathbb{E}[X])
+    (X(\omega)-\mathbb{E}[X])^\top
+    \,d\mathbb{P}(\omega)
+    \in\mathbb{R}^{d\times d}
+\end{equation*}
+es la \textbf{covarianza} de \(X:\Omega\to\mathbb{R}^d\). Para \(d=1\), se llama la \textbf{varianza} de \(X\) y se denota por \(\mathbb{V}[X]\).
+
+El Teorema de arriba también explica la fórmula usual para la esperanza. Si \(g:\mathbb{R}^d\to\mathbb{R}\) es medible e integrable respecto de \(\mathbb{P}_X\), entonces, por definición de la medida inducida,
+\begin{equation*}
+    \mathbb{E}[g(X)]
+    =
+    \int_\Omega g(X(\omega))\,d\mathbb{P}(\omega)
+    =
+    \int_{\mathbb{R}^d} g(x)\,d\mathbb{P}_X(x).
+\end{equation*}
+Si además \(\mathbb{P}_X\ll\lambda\), con densidad \(f_X=d\mathbb{P}_X/d\lambda\), entonces
+\begin{equation*}
+    \mathbb{E}[g(X)]
+    =
+    \int_{\mathbb{R}^d} g(x)f_X(x)\,dx.
+\end{equation*}
+En particular, tomando \(g(x)=x\), cuando la integral existe, se obtiene la fórmula familiar
+\begin{equation*}
+    \mathbb{E}[X]
+    =
+    \int_{\mathbb{R}^d} x f_X(x)\,dx.
+\end{equation*}
+
+La misma idea es compatible con el teorema de cambio de variables. Si \(T:\mathbb{R}^d\to\mathbb{R}^d\) es un difeomorfismo \(C^1\), y \(Y=T(X)\), entonces la distribución de \(Y\) es la medida inducida \(\mathbb{P}_Y\). Cuando \(X\) tiene densidad \(f_X\), el teorema de cambio de variables da
+\begin{align*}
+    \mathbb{P}[Y\in B]
+    &=
+    \mathbb{P}[X\in T^{-1}(B)]\\
+    &=
+    \int_{T^{-1}(B)} f_X(x)\,dx\\
+    &=
+    \int_B f_X(T^{-1}(y))
+    \left|\det D(T^{-1})(y)\right|\,dy.
+\end{align*}
+Por tanto, \(Y\) tiene densidad
+\begin{equation*}
+    f_Y(y)
+    =
+    f_X(T^{-1}(y))
+    \left|\det D(T^{-1})(y)\right|.
+\end{equation*}
+Así, cuando evaluamos esperanzas de funciones de \(Y\), recuperamos la fórmula usual
+\begin{equation*}
+    \mathbb{E}[h(Y)]
+    =
+    \int_{\mathbb{R}^d}h(y)f_Y(y)\,dy.
+\end{equation*}
+
+\begin{observacion}
+El término distribución se usa a menudo sin especificar un espacio de probabilidad y una variable aleatoria subyacentes. En este caso, ``distribución'' significa indistintamente ``medida de probabilidad''. Por ejemplo, \(\mu\) es una distribución sobre \(\Omega_2\) afirma que \(\mu\) es una medida de probabilidad sobre el espacio medible \((\Omega_2,\mathcal{A}_2)\). En este caso, siempre existe un espacio de probabilidad \((\Omega_1,\mathcal{A}_1,\mathbb{P})\) y una variable aleatoria \(X:\Omega_1\to\Omega_2\) tal que \(\mathbb{P}_X=\mu\); concretamente, \((\Omega_1,\mathcal{A}_1,\mathbb{P})=(\Omega_2,\mathcal{A}_2,\mu)\) y \(X(\omega)=\omega\).
+\end{observacion}
+
+\begin{ejemplo}
+Algunas distribuciones importantes incluyen las siguientes.
+\end{ejemplo}
+
+\begin{itemize}
+    \item \textbf{Distribución Bernoulli.} Una variable aleatoria \(X:\Omega\to\{0,1\}\) es Bernoulli distribuida si existe \(p\in[0,1]\) tal que \(\mathbb{P}[X=1]=p\) y \(\mathbb{P}[X=0]=1-p\).
+
+    \item \textbf{Distribución uniforme.} Una variable aleatoria \(X:\Omega\to\mathbb{R}^d\) está uniformemente distribuida sobre un conjunto medible \(A\in\mathcal{B}_d\), si su densidad es igual a
+    \begin{equation*}
+        f_X(x)=\frac{1}{|A|}\mathbf{1}_A(x),
+    \end{equation*}
+    donde \(|A|<\infty\) es la medida de Lebesgue de \(A\).
+
+    \item \textbf{Distribución gaussiana.} Una variable aleatoria \(X:\Omega\to\mathbb{R}^d\) es gaussiana distribuida con media \(m\in\mathbb{R}^d\) y matriz de covarianza regular \(C\in\mathbb{R}^{d\times d}\), si su densidad es igual a
+    \begin{equation*}
+        f_X(x)
+        =
+        \frac{1}{(2\pi\det(C))^{d/2}}
+        \exp\left(
+            -\frac{1}{2}(x-m)^\top C^{-1}(x-m)
+        \right).
+    \end{equation*}
+    Denotamos esta distribución por \(\mathrm{N}(m,C)\).
+\end{itemize}
+
+Finalmente, recordamos diferentes variantes de convergencia para variables aleatorias.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sea \((\Omega,\mathcal{A},\mathbb{P})\) un espacio de probabilidad, sea \(X_j:\Omega\to\mathbb{R}^d\), \(j\in\mathbb{N}\), una sucesión de variables aleatorias, y sea \(X:\Omega\to\mathbb{R}^d\) también una variable aleatoria. Se dice que la sucesión
+
+\begin{enumerate}
+    \item[(i)] \textbf{converge casi seguramente} a \(X\), si
+    \begin{equation*}
+        \mathbb{P}
+        \left[
+            \left\{
+                \omega\in\Omega
+                \,\middle|\,
+                \lim_{j\to\infty}X_j(\omega)=X(\omega)
+            \right\}
+        \right]
+        =
+        1,
+    \end{equation*}
+
+    \item[(ii)] \textbf{converge en probabilidad} a \(X\), si para todo \(\varepsilon>0\):
+    \begin{equation*}
+        \lim_{j\to\infty}
+        \mathbb{P}
+        \left[
+            \{\omega\in\Omega\mid \|X_j(\omega)-X(\omega)\|\geq\varepsilon\}
+        \right]
+        =
+        0,
+    \end{equation*}
+
+    \item[(iii)] \textbf{converge en distribución} a \(X\), si para toda función continua y acotada \(f:\mathbb{R}^d\to\mathbb{R}\):
+    \begin{equation*}
+        \lim_{j\to\infty}\mathbb{E}[f\circ X_j]
+        =
+        \mathbb{E}[f\circ X].
+    \end{equation*}
+\end{enumerate}
+\end{definicion}
+\end{tcolorbox}
+
+Las nociones en la Definición 1.1.13 están ordenadas por fuerza decreciente, es decir, la convergencia casi segura implica la convergencia en probabilidad, y la convergencia en probabilidad implica la convergencia en distribución; véase por ejemplo \cite[Capítulo 13]{klenke-2014}. Puesto que \(\mathbb{E}[f\circ X]=\int_{\mathbb{R}^d} f(x)\,d\mathbb{P}_X(x)\), la noción de convergencia en distribución solo depende de la distribución \(\mathbb{P}_X\) de \(X\). Por tanto, también decimos que una sucesión de variables aleatorias converge en distribución hacia una medida \(\mu\).
+
+\section{Condicionales, marginales e independencia}
+
+En esta sección, nos concentramos en variables aleatorias valuadas en \(\mathbb{R}^d\), aunque los conceptos siguientes pueden extenderse a espacios más generales.
+
+\subsection{Distribución conjunta y marginal}
+
+Sea de nuevo \((\Omega,\mathcal{A},\mathbb{P})\) un espacio de probabilidad, y sean \(X:\Omega\to\mathbb{R}^{d_X}\), \(Y:\Omega\to\mathbb{R}^{d_Y}\) dos variables aleatorias. Entonces
+\begin{equation*}
+    Z:=(X,Y):\Omega\to\mathbb{R}^{d_X+d_Y}
+\end{equation*}
+también es una variable aleatoria. Su distribución \(\mathbb{P}_Z\) es una medida sobre el espacio medible \((\mathbb{R}^{d_X+d_Y},\mathcal{B}_{d_X+d_Y})\), y \(\mathbb{P}_Z\) se denomina la \textbf{distribución conjunta} de \(X\) y \(Y\). Por otro lado, \(\mathbb{P}_X,\mathbb{P}_Y\) se llaman las \textbf{distribuciones marginales} de \(X,Y\). Nótese que
+\begin{equation*}
+    \mathbb{P}_X[A]
+    =
+    \mathbb{P}_Z[A\times\mathbb{R}^{d_Y}]
+    \qquad
+    \text{para todo } A\in\mathcal{B}_{d_X},
+\end{equation*}
+y análogamente para \(\mathbb{P}_Y\). Así, las marginales \(\mathbb{P}_X,\mathbb{P}_Y\) pueden construirse a partir de la distribución conjunta \(\mathbb{P}_Z\). A su vez, el conocimiento de las marginales no es suficiente para construir la distribución conjunta.
+
+\subsection{Independencia}
+
+El concepto de independencia sirve para formalizar la situación en la que conocer una variable aleatoria no proporciona información sobre otra variable aleatoria. Primero damos la definición formal, y después discutimos el lanzamiento de un dado como un ejemplo simple.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sea \((\Omega,\mathcal{A},\mathbb{P})\) un espacio de probabilidad. Entonces dos eventos \(A,B\in\mathcal{A}\) se llaman \textbf{independientes} si
+\begin{equation*}
+    \mathbb{P}[A\cap B]=\mathbb{P}[A]\mathbb{P}[B].
+\end{equation*}
+Dos variables aleatorias \(X:\Omega\to\mathbb{R}^{d_X}\) y \(Y:\Omega\to\mathbb{R}^{d_Y}\) se llaman \textbf{independientes}, si
+\begin{equation*}
+    A,\ B \text{ son independientes para todo } A\in\mathcal{A}_X,\ B\in\mathcal{A}_Y.
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+Dos variables aleatorias son, por tanto, independientes si y solo si todos los eventos en sus sigma-álgebras inducidas son independientes. Esto resulta ser equivalente a que la distribución conjunta \(\mathbb{P}_{(X,Y)}\) sea igual a la medida producto \(\mathbb{P}_X\otimes\mathbb{P}_Y\); esta última se caracteriza como la única medida sobre \(\mathbb{R}^{d_X+d_Y}\) que satisface \(\mu(A\times B)=\mathbb{P}_X[A]\mathbb{P}_Y[B]\) para todo \(A\in\mathcal{B}_{d_X}\), \(B\in\mathcal{B}_{d_Y}\).
+
+\begin{ejemplo}
+Sea \(\Omega=\{1,\ldots,6\}\) el conjunto de resultados de lanzar un dado justo, sea \(\mathcal{A}=2^\Omega\) la sigma-álgebra, y sea \(\mathbb{P}[\omega]=1/6\) para todo \(\omega\in\Omega\). Consideremos las tres variables aleatorias
+\begin{equation*}
+    X_1(\omega)=
+    \begin{cases}
+        0 & \text{si } \omega \text{ es impar},\\
+        1 & \text{si } \omega \text{ es par},
+    \end{cases}
+    \qquad
+    X_2(\omega)=
+    \begin{cases}
+        0 & \text{si } \omega\leq 3,\\
+        1 & \text{si } \omega\geq 4,
+    \end{cases}
+    \qquad
+    X_3(\omega)=
+    \begin{cases}
+        0 & \text{si } \omega\in\{1,2\},\\
+        1 & \text{si } \omega\in\{3,4\},\\
+        2 & \text{si } \omega\in\{5,6\}.
+    \end{cases}
+\end{equation*}
+Estas variables aleatorias pueden interpretarse como sigue:
+\end{ejemplo}
+
+\begin{itemize}
+    \item \(X_1\) indica si el lanzamiento da un número impar o par.
+    \item \(X_2\) indica si el lanzamiento da un número a lo sumo \(3\) o al menos \(4\).
+    \item \(X_3\) categoriza el lanzamiento en uno de los grupos \(\{1,2\}\), \(\{3,4\}\) o \(\{5,6\}\).
+\end{itemize}
+
+Las sigma-álgebras inducidas son
+\begin{align*}
+    \mathcal{A}_{X_1}
+    &=
+    \{\emptyset,\Omega,\{1,3,5\},\{2,4,6\}\},\\
+    \mathcal{A}_{X_2}
+    &=
+    \{\emptyset,\Omega,\{1,2,3\},\{4,5,6\}\},\\
+    \mathcal{A}_{X_3}
+    &=
+    \{\emptyset,\Omega,\{1,2\},\{3,4\},\{5,6\},
+    \{1,2,3,4\},\{1,2,5,6\},\{3,4,5,6\}\}.
+\end{align*}
+Dejamos al lector verificar formalmente que \(X_1\) y \(X_2\) no son independientes, pero \(X_1\) y \(X_3\) sí lo son. Esto refleja el hecho de que, por ejemplo, saber que el resultado es impar hace más probable que el número pertenezca a \(\{1,2,3\}\) que a \(\{4,5,6\}\). Sin embargo, este conocimiento no proporciona información sobre las tres categorías \(\{1,2\}\), \(\{3,4\}\) y \(\{5,6\}\).
+
+Si \(X:\Omega\to\mathbb{R}\), \(Y:\Omega\to\mathbb{R}\) son dos variables aleatorias independientes, entonces, debido a que \(\mathbb{P}_{(X,Y)}=\mathbb{P}_X\otimes\mathbb{P}_Y\),
+\begin{align*}
+    \mathbb{E}[XY]
+    &=
+    \int_\Omega X(\omega)Y(\omega)\,d\mathbb{P}(\omega)\\
+    &=
+    \int_{\mathbb{R}^2} xy\,d\mathbb{P}_{(X,Y)}(x,y)\\
+    &=
+    \int_{\mathbb{R}}x\,d\mathbb{P}_X(x)
+    \int_{\mathbb{R}}y\,d\mathbb{P}_Y(y)\\
+    &=
+    \mathbb{E}[X]\mathbb{E}[Y].
+\end{align*}
+Usando esta observación, es fácil ver que para una sucesión de variables aleatorias reales independientes \((X_i)_{i=1}^n\) con segundos momentos acotados, se cumple la \textbf{identidad de Bienaymé}
+\begin{equation*}
+    \mathbb{V}\left[\sum_{i=1}^{n}X_i\right]
+    =
+    \sum_{i=1}^{n}\mathbb{V}[X_i].
+    \tag{A.3.1}
+\end{equation*}
+
+\subsection{Distribuciones condicionales}
+
+Sea \((\Omega,\mathcal{A},\mathbb{P})\) un espacio de probabilidad, y sean \(A,B\in\mathcal{A}\) dos eventos. En caso de que \(\mathbb{P}[B]>0\), definimos
+\begin{equation*}
+    \mathbb{P}[A\mid B]
+    :=
+    \frac{\mathbb{P}[A\cap B]}{\mathbb{P}[B]},
+    \tag{A.3.2}
+\end{equation*}
+y llamamos a \(\mathbb{P}[A\mid B]\) la \textbf{probabilidad condicional} de \(A\) dado \(B\).
+
+\begin{ejemplo}
+Consideremos el contexto del Ejemplo 1.3.2. Sea \(A=\{\omega\in\Omega\mid X_1(\omega)=0\}\) el evento de que el resultado del lanzamiento del dado fue un número impar, y sea \(B=\{\omega\in\Omega\mid X_2(\omega)=0\}\) el evento de que el resultado fue a lo sumo \(3\). Entonces \(\mathbb{P}[B]=1/2\), y \(\mathbb{P}[A\cap B]=1/3\). Por tanto
+\begin{equation*}
+    \mathbb{P}[A\mid B]
+    =
+    \frac{\mathbb{P}[A\cap B]}{\mathbb{P}[B]}
+    =
+    \frac{1/3}{1/2}
+    =
+    \frac{2}{3}.
+\end{equation*}
+Esto refleja que, dado que sabemos que el resultado es a lo sumo \(3\), la probabilidad de que el número sea impar, es decir, esté en \(\{1,3\}\), es mayor que la probabilidad de que el número sea par, es decir, igual a \(2\).
+\end{ejemplo}
+
+La probabilidad condicional en (A.3.2) solo está bien definida si \(\mathbb{P}[B]>0\). En la práctica, a menudo encontramos el caso en el que querríamos condicionar sobre un evento de probabilidad cero.
+
+\begin{ejemplo}
+Consideremos el siguiente procedimiento: primero extraemos un número aleatorio \(p\in[0,1]\) de acuerdo con una distribución uniforme sobre \([0,1]\). Después extraemos un número aleatorio \(X\in\{0,1\}\) de acuerdo con una distribución \(p\)-Bernoulli, es decir, \(\mathbb{P}[X=1]=p\) y \(\mathbb{P}[X=0]=1-p\). Entonces \((p,X)\) es una variable aleatoria conjunta que toma valores en \([0,1]\times\{0,1\}\). ¿Cuánto es \(\mathbb{P}[X=1\mid p=0.5]\) en este caso? Intuitivamente, debería ser \(1/2\), pero nótese que \(\mathbb{P}[p=0.5]=0\), de modo que (A.3.2) no es significativa aquí.
+\end{ejemplo}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}[distribución condicional regular]
+Sea \((\Omega,\mathcal{A},\mathbb{P})\) un espacio de probabilidad, y sean \(X:\Omega\to\mathbb{R}^{d_X}\) y \(Y:\Omega\to\mathbb{R}^{d_Y}\) dos variables aleatorias. Sea \(\tau_{X\mid Y}:\mathcal{B}_{d_X}\times\mathbb{R}^{d_Y}\to[0,1]\) tal que
+
+\begin{enumerate}
+    \item[(i)] \(y\mapsto\tau_{X\mid Y}(A,y):\mathbb{R}^{d_Y}\to[0,1]\) es medible para todo \(A\in\mathcal{B}_{d_X}\),
+    \item[(ii)] \(A\mapsto\tau_{X\mid Y}(A,y)\) es una medida de probabilidad sobre \((\mathbb{R}^{d_X},\mathcal{B}_{d_X})\) para todo \(y\in Y(\Omega)\),
+    \item[(iii)] para todo \(A\in\mathcal{B}_{d_X}\) y todo \(B\in\mathcal{B}_{d_Y}\) se cumple
+    \begin{equation*}
+        \mathbb{P}[X\in A,Y\in B]
+        =
+        \int_B\tau_{X\mid Y}(A,y)\,d\mathbb{P}_Y(y).
+    \end{equation*}
+\end{enumerate}
+
+Entonces \(\tau\) se llama una \textbf{versión regular de la distribución condicional} de \(X\) dado \(Y\). En este caso, denotamos
+\begin{equation*}
+    \mathbb{P}[X\in A\mid Y=y]
+    :=
+    \tau_{X\mid Y}(A,y),
+\end{equation*}
+y nos referimos a esta medida como la distribución condicional de \(X\mid Y=y\).
+\end{definicion}
+\end{tcolorbox}
+
+La Definición 1.1.18 proporciona una manera matemáticamente rigurosa de asignar una distribución a una variable aleatoria condicionada a un evento que puede tener probabilidad cero, como en el Ejemplo 1.3.4. La existencia y unicidad de estas distribuciones condicionales se cumplen en el siguiente sentido; véase por ejemplo \cite[Capítulo 8]{klenke-2014} o \cite[Capítulo 3]{durrett-2019} para el enunciado específico dado aquí.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{teorema}
+Sea \((\Omega,\mathcal{A},\mathbb{P})\) un espacio de probabilidad, y sean \(X:\Omega\to\mathbb{R}^{d_X}\), \(Y:\Omega\to\mathbb{R}^{d_Y}\) dos variables aleatorias. Entonces existe una versión regular de la distribución condicional \(\tau_1\).
+
+Sea \(\tau_2\) otra versión regular de la distribución condicional. Entonces existe un conjunto \(\mathbb{P}_Y\)-nulo \(N\subseteq\mathbb{R}^{d_Y}\), tal que para todo \(y\in N^c\cap Y(\Omega)\), las dos medidas de probabilidad \(\tau_1(\cdot,y)\) y \(\tau_2(\cdot,y)\) coinciden.
+\end{teorema}
+\end{tcolorbox}
+
+En particular, las distribuciones condicionales solo están bien definidas en un sentido \(\mathbb{P}_Y\)-casi en todas partes.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sea \((\Omega,\mathcal{A},\mathbb{P})\) un espacio de probabilidad, y sean \(X:\Omega\to\mathbb{R}^{d_X}\), \(Y:\Omega\to\mathbb{R}^{d_Y}\), \(Z:\Omega\to\mathbb{R}^{d_Z}\) tres variables aleatorias. Decimos que \(X\) y \(Z\) son \textbf{condicionalmente independientes dado \(Y\)}, si las dos distribuciones \(X\mid Y=y\) y \(Z\mid Y=y\) son independientes para \(\mathbb{P}_Y\)-casi todo \(y\in Y(\Omega)\).
+\end{definicion}
+\end{tcolorbox}
+
+\section{Desigualdades de concentración}
+
+Sea \(X_i:\Omega\to\mathbb{R}\), \(i\in\mathbb{N}\), una sucesión de variables aleatorias con primeros momentos finitos. El promedio centrado sobre los primeros \(n\) términos
+\begin{equation*}
+    S_n:=\frac{1}{n}\sum_{i=1}^{n}(X_i-\mathbb{E}[X_i])
+    \tag{A.4.1}
+\end{equation*}
+es otra variable aleatoria, y por linealidad de la esperanza se cumple \(\mathbb{E}[S_n]=0\). Se dice que la sucesión satisface la \textbf{ley fuerte de los grandes números} si
+\begin{equation*}
+    \mathbb{P}\left[\limsup_{n\to\infty}|S_n|=0\right]=1.
+\end{equation*}
+Este es, por ejemplo, el caso si existen \(C<\infty\) tal que \(\mathbb{V}[X_i]\leq C\) para todo \(i\in\mathbb{N}\). Las desigualdades de concentración proporcionan cotas sobre la tasa de esta convergencia.
+
+Comenzamos con la desigualdad de Markov.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{lema}[desigualdad de Markov]
+Sea \(X:\Omega\to\mathbb{R}\) una variable aleatoria, y sea \(\varphi:[0,\infty)\to[0,\infty)\) monótonamente creciente. Entonces para todo \(\varepsilon>0\)
+\begin{equation*}
+    \mathbb{P}[|X|\geq\varepsilon]
+    \leq
+    \frac{\mathbb{E}[\varphi(|X|)]}{\varphi(\varepsilon)}.
+\end{equation*}
+\end{lema}
+\end{tcolorbox}
+
+\textbf{Demostración.} Tenemos
+\begin{equation*}
+    \mathbb{P}[|X|\geq\varepsilon]
+    =
+    \int_{X^{-1}([\varepsilon,\infty))}1\,d\mathbb{P}(\omega)
+    \leq
+    \int_\Omega
+    \frac{\varphi(|X(\omega)|)}{\varphi(\varepsilon)}
+    \,d\mathbb{P}(\omega)
+    =
+    \frac{\mathbb{E}[\varphi(|X|)]}{\varphi(\varepsilon)},
+\end{equation*}
+lo cual da la afirmación. \(\square\)
+
+Aplicar la desigualdad de Markov con \(\varphi(x):=x^2\) a la variable aleatoria \(X-\mathbb{E}[X]\) da directamente la desigualdad de Chebyshev.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{lema}[desigualdad de Chebyshev]
+Sea \(X:\Omega\to\mathbb{R}\) una variable aleatoria con varianza finita. Entonces para todo \(\varepsilon>0\)
+\begin{equation*}
+    \mathbb{P}[|X-\mathbb{E}[X]|\geq\varepsilon]
+    \leq
+    \frac{\mathbb{V}[X]}{\varepsilon^2}.
+\end{equation*}
+\end{lema}
+\end{tcolorbox}
+
+De la desigualdad de Chebyshev obtenemos el siguiente resultado, que es una desigualdad de concentración bastante general para variables aleatorias con varianzas finitas.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{teorema}
+Sean \(X_1,\ldots,X_n\), \(n\in\mathbb{N}\), variables aleatorias reales independientes tales que para algún \(\varsigma>0\) se cumple \(\mathbb{E}[|X_i-\mu|^2]\leq \varsigma^2\) para todo \(i=1,\ldots,n\). Denotemos
+\begin{equation*}
+    \mu:=\mathbb{E}\left[\frac{1}{n}\sum_{j=1}^{n}X_j\right].
+    \tag{A.4.2}
+\end{equation*}
+Entonces para todo \(\varepsilon>0\)
+\begin{equation*}
+    \mathbb{P}
+    \left[
+        \left|
+            \frac{1}{n}\sum_{j=1}^{n}X_j-\mu
+        \right|
+        \geq
+        \varepsilon
+    \right]
+    \leq
+    \frac{\varsigma^2}{\varepsilon^2 n}.
+\end{equation*}
+\end{teorema}
+\end{tcolorbox}
+
+\textbf{Demostración.} Sea
+\begin{equation*}
+    S_n=\frac{1}{n}\sum_{j=1}^{n}(X_i-\mathbb{E}[X_i])
+    =
+    \left(\sum_{j=1}^{n}X_j\right)/n-\mu.
+\end{equation*}
+Por la identidad de Bienaymé (A.3.1), se cumple
+\begin{equation*}
+    \mathbb{V}[S_n]
+    =
+    \frac{1}{n^2}\sum_{j=1}^{n}
+    \mathbb{E}[|X_i-\mathbb{E}[X_i]|^2]
+    \leq
+    \frac{\varsigma^2}{n}.
+\end{equation*}
+Puesto que \(\mathbb{E}[S_n]=0\), la desigualdad de Chebyshev aplicada a \(S_n\) da el enunciado. \(\square\)
+
+Si tenemos información adicional sobre las variables aleatorias, entonces podemos derivar cotas más precisas. En el caso de variables aleatorias acotadas uniformemente, más que solamente con varianza acotada, la desigualdad de Hoeffding, que recordamos a continuación, muestra una tasa exponencial de concentración alrededor de la media.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{teorema}[desigualdad de Hoeffding]
+Sean \(a,b\in\mathbb{R}\). Sean \(X_1,\ldots,X_n\), \(n\in\mathbb{N}\), variables aleatorias reales independientes tales que \(a\leq X_i\leq b\) casi seguramente para todo \(i=1,\ldots,n\), y sea \(\mu\) como en (A.4.2). Entonces, para todo \(\varepsilon>0\),
+\begin{equation*}
+    \mathbb{P}
+    \left[
+        \left|
+            \frac{1}{n}\sum_{j=1}^{n}X_j-\mu
+        \right|
+        >
+        \varepsilon
+    \right]
+    \leq
+    2e^{-\frac{2n\varepsilon^2}{(b-a)^2}}.
+\end{equation*}
+\end{teorema}
+\end{tcolorbox}
+
+Una demostración puede encontrarse, por ejemplo, en \cite[Sección B.4]{shorack-2017}, de donde también se toma esta versión. Finalmente, recordamos el teorema del límite central, en su formulación multivariada. Decimos que \((X_j)_{j\in\mathbb{N}}\) es una \textbf{sucesión i.i.d. de variables aleatorias}, si las variables aleatorias son independientes por pares e idénticamente distribuidas. Para una demostración, véase \cite[Teorema 15.58]{klenke-2014}.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{teorema}[teorema central del límite multivariado]
+Sea \((X_n)_{n\in\mathbb{N}}\) una sucesión i.i.d. de variables aleatorias valuadas en \(\mathbb{R}^d\), tales que \(\mathbb{E}[X_n]=0\in\mathbb{R}^d\) y \(\mathbb{E}[X_{n,i}X_{n,j}]=C_{ij}\) para todo \(i,j=1,\ldots,d\). Sea
+\begin{equation*}
+    Y_n:=
+    \frac{X_1+\cdots+X_n}{\sqrt{n}}
+    \in\mathbb{R}^d.
+\end{equation*}
+Entonces \(Y_n\) converge en distribución a \(\mathrm{N}(0,C)\) cuando \(n\to\infty\).
+\end{teorema}
+\end{tcolorbox}
+
+
+\chapter{Aprendizaje estadístico}
+
+En esta sección introducimos el marco básico de la teoría del aprendizaje estadístico. La idea central es que los datos observados son solo una muestra finita de una distribución de probabilidad desconocida. Por tanto, el objetivo no es simplemente ajustar bien los datos disponibles, sino encontrar una regla de predicción que tenga buen desempeño sobre nuevos datos generados por la misma distribución.
+
+\section{Espacio de datos y distribución poblacional}
+
+Sea \(\mathcal{X}\) el espacio de entradas y sea \(\mathcal{Y}\) el espacio de salidas o etiquetas. En problemas de regresión, típicamente \(\mathcal{Y}\subseteq\mathbb{R}^k\), mientras que en problemas de clasificación \(\mathcal{Y}\) suele ser un conjunto finito, por ejemplo \(\mathcal{Y}=\{1,\ldots,K\}\). El espacio de datos es entonces
+\begin{equation*}
+    \mathcal{Z}:=\mathcal{X}\times\mathcal{Y}.
+\end{equation*}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Una \textbf{distribución de datos} es una medida de probabilidad \(\mathcal{D}\) sobre el espacio medible \((\mathcal{X}\times\mathcal{Y},\mathcal{A}_{\mathcal{X}}\otimes\mathcal{A}_{\mathcal{Y}})\). Un par aleatorio
+\begin{equation*}
+    (X,Y)\sim\mathcal{D}
+\end{equation*}
+representa un dato genérico de la población.
+\end{definicion}
+\end{tcolorbox}
+
+La distribución \(\mathcal{D}\) es usualmente desconocida. En la práctica, solo observamos una muestra finita
+\begin{equation*}
+    S=\{(X_1,Y_1),\ldots,(X_m,Y_m)\},
+\end{equation*}
+donde cada \((X_i,Y_i)\) se interpreta como un dato observado. El supuesto estándar es que estos datos son independientes e idénticamente distribuidos según \(\mathcal{D}\).
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Una muestra de entrenamiento de tamaño \(m\) es una sucesión
+\begin{equation*}
+    S=((X_1,Y_1),\ldots,(X_m,Y_m))
+\end{equation*}
+de variables aleatorias con valores en \(\mathcal{X}\times\mathcal{Y}\). Decimos que \(S\) es una muestra \textbf{i.i.d.} de \(\mathcal{D}\) si
+\begin{equation*}
+    (X_i,Y_i)\sim\mathcal{D}
+    \qquad
+    \text{para todo } i=1,\ldots,m,
+\end{equation*}
+y las variables aleatorias \((X_1,Y_1),\ldots,(X_m,Y_m)\) son independientes.
+\end{definicion}
+\end{tcolorbox}
+
+El supuesto i.i.d. formaliza la idea de que los datos de entrenamiento y los datos futuros provienen del mismo mecanismo probabilístico. Sin este supuesto, o sin alguna hipótesis que lo reemplace, no hay razón matemática para esperar que un modelo que funciona bien sobre la muestra observada funcione bien sobre datos nuevos.
+
+\section{Hipótesis y clases de hipótesis}
+
+Una regla de predicción es una función que asigna una salida predicha a cada entrada.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Una \textbf{hipótesis} es una función medible
+\begin{equation*}
+    h:\mathcal{X}\to\mathcal{Y}.
+\end{equation*}
+Una \textbf{clase de hipótesis} es un conjunto \(\mathcal{H}\) de hipótesis.
+\end{definicion}
+\end{tcolorbox}
+
+En aprendizaje automático, la clase \(\mathcal{H}\) representa la familia de modelos entre los cuales se busca escoger uno. Por ejemplo, \(\mathcal{H}\) puede ser una familia de funciones lineales, árboles de decisión, máquinas de soporte vectorial, o redes neuronales de una arquitectura fija. Si \(\Phi(\cdot,w)\) es una red neuronal con parámetro \(w\), entonces la clase de hipótesis asociada puede escribirse como
+\begin{equation*}
+    \mathcal{H}
+    =
+    \{\Phi(\cdot,w): w\in\Theta\},
+\end{equation*}
+donde \(\Theta\) es el espacio de parámetros admisibles.
+
+\section{Funciones de pérdida}
+
+Para evaluar la calidad de una predicción, introducimos una función de pérdida. Esta mide cuánto cuesta predecir \(h(x)\) cuando la etiqueta verdadera es \(y\).
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Una \textbf{función de pérdida} es una función medible
+\begin{equation*}
+    \ell:\mathcal{Y}\times\mathcal{Y}\to[0,\infty),
+\end{equation*}
+donde \(\ell(h(x),y)\) mide el error de predecir \(h(x)\) cuando la salida correcta es \(y\).
+\end{definicion}
+\end{tcolorbox}
+
+En regresión, una pérdida común es la pérdida cuadrática
+\begin{equation*}
+    \ell(\widehat{y},y)
+    =
+    \frac{1}{2}\|\widehat{y}-y\|^2.
+\end{equation*}
+En clasificación, una pérdida básica es la pérdida \(0\)-\(1\), definida por
+\begin{equation*}
+    \ell(\widehat{y},y)
+    =
+    \mathbf{1}_{\{\widehat{y}\neq y\}}.
+\end{equation*}
+Esta pérdida vale \(0\) cuando la predicción es correcta y \(1\) cuando es incorrecta.
+
+Cuando el modelo produce puntajes o probabilidades en lugar de una etiqueta directa, se usan pérdidas sustitutas, como la pérdida logística o la entropía cruzada. Estas pérdidas suelen ser más convenientes para optimización, pues son diferenciables o casi diferenciables, a diferencia de la pérdida \(0\)-\(1\).
+
+\section{Riesgo poblacional}
+
+El verdadero objetivo del aprendizaje no es minimizar el error sobre la muestra observada, sino minimizar el error esperado sobre un dato nuevo \((X,Y)\sim\mathcal{D}\).
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sea \(\mathcal{D}\) una distribución de datos sobre \(\mathcal{X}\times\mathcal{Y}\), sea \(\ell\) una función de pérdida, y sea \(h:\mathcal{X}\to\mathcal{Y}\) una hipótesis. El \textbf{riesgo poblacional} de \(h\) se define por
+\begin{equation*}
+    R(h)
+    :=
+    \mathbb{E}_{(X,Y)\sim\mathcal{D}}
+    [\ell(h(X),Y)].
+\end{equation*}
+Equivalentemente,
+\begin{equation*}
+    R(h)
+    =
+    \int_{\mathcal{X}\times\mathcal{Y}}
+    \ell(h(x),y)\,d\mathcal{D}(x,y).
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+El riesgo poblacional mide el desempeño promedio de \(h\) sobre la distribución verdadera de los datos. En términos ideales, querríamos resolver
+\begin{equation*}
+    \inf_{h\in\mathcal{H}} R(h).
+\end{equation*}
+Sin embargo, esto no es directamente posible porque la distribución \(\mathcal{D}\) es desconocida. La teoría del aprendizaje estadístico estudia cómo aproximar este problema usando únicamente la muestra observada.
+
+\section{Riesgo de Bayes y error de aproximación}
+
+Si pudiéramos optimizar sobre todas las funciones medibles posibles, obtendríamos el menor riesgo alcanzable bajo la distribución \(\mathcal{D}\) y la pérdida \(\ell\).
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+El \textbf{riesgo de Bayes} se define por
+\begin{equation*}
+    R^*
+    :=
+    \inf_{h:\mathcal{X}\to\mathcal{Y}}
+    R(h),
+\end{equation*}
+donde el ínfimo se toma sobre todas las hipótesis medibles admisibles.
+\end{definicion}
+\end{tcolorbox}
+
+Un minimizador, cuando existe, se llama un \textbf{predictor de Bayes}. En general, la clase de hipótesis \(\mathcal{H}\) que usamos en la práctica puede no contener un predictor de Bayes. Por tanto, incluso el mejor elemento de \(\mathcal{H}\) puede tener riesgo mayor que \(R^*\).
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+El \textbf{error de aproximación} de una clase de hipótesis \(\mathcal{H}\) se define por
+\begin{equation*}
+    \inf_{h\in\mathcal{H}}R(h)-R^*.
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+El error de aproximación mide la limitación intrínseca de la clase \(\mathcal{H}\). Si \(\mathcal{H}\) es demasiado pequeña, puede ser incapaz de representar buenas reglas de predicción. Si \(\mathcal{H}\) es muy grande, el error de aproximación puede disminuir, pero puede aumentar la dificultad de seleccionar una buena hipótesis a partir de datos finitos.
+
+\section{Riesgo empírico}
+
+Como \(\mathcal{D}\) es desconocida, reemplazamos la esperanza poblacional por un promedio sobre la muestra observada.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sea
+\begin{equation*}
+    S=((X_1,Y_1),\ldots,(X_m,Y_m))
+\end{equation*}
+una muestra de entrenamiento. El \textbf{riesgo empírico} de una hipótesis \(h\) sobre \(S\) se define por
+\begin{equation*}
+    \widehat{R}_S(h)
+    :=
+    \frac{1}{m}
+    \sum_{i=1}^{m}
+    \ell(h(X_i),Y_i).
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+El riesgo empírico es una variable aleatoria, pues depende de la muestra aleatoria \(S\). Para una hipótesis fija \(h\), si \(S\) es i.i.d. de \(\mathcal{D}\), entonces
+\begin{equation*}
+    \mathbb{E}[\widehat{R}_S(h)]
+    =
+    R(h).
+\end{equation*}
+En efecto, por linealidad de la esperanza,
+\begin{equation*}
+    \mathbb{E}[\widehat{R}_S(h)]
+    =
+    \frac{1}{m}
+    \sum_{i=1}^{m}
+    \mathbb{E}[\ell(h(X_i),Y_i)]
+    =
+    R(h).
+\end{equation*}
+Así, para cada \(h\) fijo, el riesgo empírico es un estimador insesgado del riesgo poblacional.
+
+\section{Minimización del riesgo empírico}
+
+La regla más directa para escoger una hipótesis a partir de datos consiste en minimizar el riesgo empírico.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Un \textbf{minimizador del riesgo empírico} sobre \(\mathcal{H}\) es una hipótesis \(\widehat{h}_S\in\mathcal{H}\) tal que
+\begin{equation*}
+    \widehat{R}_S(\widehat{h}_S)
+    =
+    \inf_{h\in\mathcal{H}}
+    \widehat{R}_S(h).
+\end{equation*}
+A este principio se le llama \textbf{minimización del riesgo empírico}, o ERM por sus siglas en inglés.
+\end{definicion}
+\end{tcolorbox}
+
+En la práctica, muchas veces no encontramos un minimizador exacto del riesgo empírico, sino una hipótesis que lo minimiza aproximadamente. Por ejemplo, al entrenar una red neuronal mediante descenso de gradiente estocástico o AdamW, usualmente solo obtenemos un punto aproximado y posiblemente localmente óptimo.
+
+Si la clase de hipótesis está parametrizada por \(\Theta\), de modo que
+\begin{equation*}
+    \mathcal{H}=\{h_\theta:\theta\in\Theta\},
+\end{equation*}
+entonces la minimización del riesgo empírico se escribe como un problema de optimización sobre los parámetros:
+\begin{equation*}
+    \inf_{\theta\in\Theta}
+    \widehat{R}_S(h_\theta)
+    =
+    \inf_{\theta\in\Theta}
+    \frac{1}{m}
+    \sum_{i=1}^{m}
+    \ell(h_\theta(X_i),Y_i).
+\end{equation*}
+Este es el puente directo entre teoría estadística y optimización: el entrenamiento de un modelo es la minimización, exacta o aproximada, de una función objetivo empírica.
+
+\section{Generalización}
+
+El problema central es que una hipótesis puede tener bajo riesgo empírico y, sin embargo, alto riesgo poblacional. En tal caso, el modelo ha ajustado peculiaridades de la muestra de entrenamiento que no representan la distribución subyacente. Este fenómeno se conoce como sobreajuste.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+La \textbf{brecha de generalización} de una hipótesis \(h\) respecto de una muestra \(S\) se define por
+\begin{equation*}
+    R(h)-\widehat{R}_S(h).
+\end{equation*}
+También se considera con frecuencia su valor absoluto,
+\begin{equation*}
+    |R(h)-\widehat{R}_S(h)|.
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+Una meta fundamental de la teoría del aprendizaje estadístico es controlar esta brecha. Para una hipótesis fija \(h\), la ley de los grandes números sugiere que
+\begin{equation*}
+    \widehat{R}_S(h)
+    \to
+    R(h)
+    \qquad
+    \text{cuando } m\to\infty.
+\end{equation*}
+Sin embargo, en aprendizaje no escogemos \(h\) antes de ver los datos. La hipótesis \(\widehat{h}_S\) depende de la muestra \(S\). Por tanto, necesitamos controlar simultáneamente la diferencia entre riesgo empírico y riesgo poblacional para muchas hipótesis.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+La \textbf{brecha uniforme de generalización} sobre una clase \(\mathcal{H}\) se define por
+\begin{equation*}
+    \sup_{h\in\mathcal{H}}
+    |R(h)-\widehat{R}_S(h)|.
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+Si esta cantidad es pequeña, entonces el riesgo empírico aproxima uniformemente al riesgo poblacional sobre toda la clase \(\mathcal{H}\). En tal caso, minimizar el riesgo empírico es una estrategia razonable para obtener una hipótesis con riesgo poblacional pequeño.
+
+\section{Descomposición básica del exceso de riesgo}
+
+Sea
+\begin{equation*}
+    h_{\mathcal{H}}^*
+    \in
+    \operatorname*{arg\,min}_{h\in\mathcal{H}}R(h)
+\end{equation*}
+un minimizador del riesgo poblacional dentro de \(\mathcal{H}\), suponiendo que existe, y sea \(\widehat{h}_S\) un minimizador del riesgo empírico. Queremos controlar el exceso de riesgo
+\begin{equation*}
+    R(\widehat{h}_S)-R(h_{\mathcal{H}}^*).
+\end{equation*}
+Usando que \(\widehat{h}_S\) minimiza el riesgo empírico, tenemos
+\begin{align*}
+    R(\widehat{h}_S)-R(h_{\mathcal{H}}^*)
+    &=
+    R(\widehat{h}_S)-\widehat{R}_S(\widehat{h}_S)
+    +
+    \widehat{R}_S(\widehat{h}_S)-\widehat{R}_S(h_{\mathcal{H}}^*)\\
+    &\qquad
+    +
+    \widehat{R}_S(h_{\mathcal{H}}^*)-R(h_{\mathcal{H}}^*)\\
+    &\leq
+    R(\widehat{h}_S)-\widehat{R}_S(\widehat{h}_S)
+    +
+    \widehat{R}_S(h_{\mathcal{H}}^*)-R(h_{\mathcal{H}}^*)\\
+    &\leq
+    2\sup_{h\in\mathcal{H}}
+    |R(h)-\widehat{R}_S(h)|.
+\end{align*}
+Así obtenemos la cota fundamental
+\begin{equation*}
+    R(\widehat{h}_S)-R(h_{\mathcal{H}}^*)
+    \leq
+    2\sup_{h\in\mathcal{H}}
+    |R(h)-\widehat{R}_S(h)|.
+\end{equation*}
+Esta desigualdad muestra que controlar uniformemente la brecha entre riesgo empírico y riesgo poblacional permite controlar el exceso de riesgo del minimizador empírico.
+
+Si comparamos contra el riesgo de Bayes \(R^*\), entonces
+\begin{equation*}
+    R(\widehat{h}_S)-R^*
+    =
+    \bigl(R(\widehat{h}_S)-R(h_{\mathcal{H}}^*)\bigr)
+    +
+    \bigl(R(h_{\mathcal{H}}^*)-R^*\bigr).
+\end{equation*}
+El primer término es el \textbf{error de estimación}, asociado a tener una muestra finita, mientras que el segundo es el \textbf{error de aproximación}, asociado a la limitación de la clase \(\mathcal{H}\).
+
+\section{Sobreajuste y regularización}
+
+Una clase de hipótesis muy grande puede tener bajo riesgo empírico, pero mala generalización. Intuitivamente, si \(\mathcal{H}\) es demasiado flexible, puede adaptarse al ruido de la muestra de entrenamiento.
+
+La regularización busca restringir o penalizar la complejidad de las hipótesis. En una clase parametrizada, una forma común consiste en minimizar
+\begin{equation*}
+    \widehat{R}_S(h_\theta)
+    +
+    \lambda\Omega(\theta),
+\end{equation*}
+donde \(\Omega(\theta)\) es un término de penalización y \(\lambda>0\) controla la intensidad de la regularización. Por ejemplo, la regularización cuadrática usa
+\begin{equation*}
+    \Omega(\theta)
+    =
+    \frac{1}{2}\|\theta\|^2.
+\end{equation*}
+
+En redes neuronales, una técnica relacionada es el decaimiento de pesos, que penaliza o reduce la magnitud de los parámetros. Para optimizadores adaptativos como Adam, la variante AdamW implementa este decaimiento de manera desacoplada respecto del gradiente adaptativo.
+
+\section{Clasificación y regresión}
+
+En regresión, el objetivo es predecir valores continuos. Por ejemplo, si \(\mathcal{Y}=\mathbb{R}\), una hipótesis es una función
+\begin{equation*}
+    h:\mathcal{X}\to\mathbb{R}.
+\end{equation*}
+Con pérdida cuadrática, el riesgo es
+\begin{equation*}
+    R(h)
+    =
+    \mathbb{E}[(h(X)-Y)^2].
+\end{equation*}
+En este caso, si se permite optimizar sobre todas las funciones medibles y las esperanzas existen, el predictor óptimo está dado por la esperanza condicional
+\begin{equation*}
+    h^*(x)
+    =
+    \mathbb{E}[Y\mid X=x].
+\end{equation*}
+
+En clasificación, el objetivo es predecir una etiqueta discreta. Si \(\mathcal{Y}=\{1,\ldots,K\}\), una hipótesis es una función
+\begin{equation*}
+    h:\mathcal{X}\to\{1,\ldots,K\}.
+\end{equation*}
+Con pérdida \(0\)-\(1\), el riesgo es
+\begin{equation*}
+    R(h)
+    =
+    \mathbb{P}[h(X)\neq Y].
+\end{equation*}
+El clasificador de Bayes predice una clase de máxima probabilidad condicional:
+\begin{equation*}
+    h^*(x)
+    \in
+    \operatorname*{arg\,max}_{y\in\{1,\ldots,K\}}
+    \mathbb{P}[Y=y\mid X=x].
+\end{equation*}
+
+\section{Entropía cruzada y modelos probabilísticos}
+
+En muchos modelos modernos, especialmente redes neuronales para clasificación, la salida no se interpreta directamente como una etiqueta, sino como un vector de probabilidades. Para \(K\) clases, el modelo produce
+\begin{equation*}
+    p_\theta(x)
+    =
+    (p_{\theta,1}(x),\ldots,p_{\theta,K}(x))
+    \in\Delta^{K-1},
+\end{equation*}
+donde
+\begin{equation*}
+    \Delta^{K-1}
+    :=
+    \left\{
+        p\in[0,1]^K
+        \,\middle|\,
+        \sum_{k=1}^{K}p_k=1
+    \right\}
+\end{equation*}
+es el simplex de probabilidad.
+
+Una manera usual de obtener tal vector es aplicar la función softmax a los logits \(z_\theta(x)\in\mathbb{R}^K\):
+\begin{equation*}
+    p_{\theta,k}(x)
+    =
+    \frac{\exp(z_{\theta,k}(x))}
+    {\sum_{j=1}^{K}\exp(z_{\theta,j}(x))}
+    \qquad
+    \text{para } k=1,\ldots,K.
+\end{equation*}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Para clasificación multiclase, la \textbf{pérdida de entropía cruzada} se define por
+\begin{equation*}
+    \ell(p,y)
+    :=
+    -\log p_y,
+\end{equation*}
+donde \(p\in\Delta^{K-1}\) es el vector de probabilidades predichas y \(y\in\{1,\ldots,K\}\) es la clase verdadera.
+\end{definicion}
+\end{tcolorbox}
+
+Si el modelo está parametrizado por \(\theta\), entonces el riesgo empírico de entropía cruzada es
+\begin{equation*}
+    \widehat{R}_S(\theta)
+    =
+    -\frac{1}{m}
+    \sum_{i=1}^{m}
+    \log p_{\theta,Y_i}(X_i).
+\end{equation*}
+Minimizar esta cantidad equivale a maximizar la verosimilitud condicional de las etiquetas observadas, bajo el modelo probabilístico \(p_\theta(y\mid x)\).
+
+\chapter{Redes neuronales}
+
+En esta sección introducimos la definición matemática de una red neuronal feedforward. La idea central es construir funciones complicadas mediante la composición de transformaciones afines y no linealidades simples. En aprendizaje profundo, estas funciones se usan como familias paramétricas de modelos: los parámetros son los pesos y sesgos de la red, y el entrenamiento consiste en ajustar dichos parámetros a partir de datos.
+
+\section{Capas, activaciones y parámetros}
+
+Una red neuronal feedforward se construye a partir de capas. Cada capa toma un vector de entrada, aplica una transformación afín, y luego aplica una función no lineal componente a componente. La función no lineal se denomina \textbf{función de activación}.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sea \(d\in\mathbb{N}\). Una \textbf{función de activación} es una función
+\begin{equation*}
+    \sigma:\mathbb{R}\to\mathbb{R}.
+\end{equation*}
+Si \(x=(x_1,\ldots,x_d)\in\mathbb{R}^d\), escribimos también
+\begin{equation*}
+    \sigma(x)
+    :=
+    (\sigma(x_1),\ldots,\sigma(x_d))
+    \in\mathbb{R}^d.
+\end{equation*}
+Es decir, la activación se aplica componente a componente.
+\end{definicion}
+\end{tcolorbox}
+
+Ejemplos usuales de funciones de activación son la función sigmoide, la tangente hiperbólica y la función ReLU, dadas respectivamente por
+\begin{equation*}
+    \sigma(x)=\frac{1}{1+e^{-x}},
+    \qquad
+    \sigma(x)=\tanh(x),
+    \qquad
+    \sigma(x)=\max\{0,x\}.
+\end{equation*}
+La presencia de una activación no lineal es esencial: sin ella, una composición de capas afines seguiría siendo una función afín, y por tanto la red no tendría mayor poder expresivo que una sola transformación lineal-afín.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sean \(d_{\mathrm{in}},d_{\mathrm{out}}\in\mathbb{N}\). Una \textbf{capa afín} de dimensión de entrada \(d_{\mathrm{in}}\) y dimensión de salida \(d_{\mathrm{out}}\) es una función
+\begin{equation*}
+    A:\mathbb{R}^{d_{\mathrm{in}}}\to\mathbb{R}^{d_{\mathrm{out}}}
+\end{equation*}
+de la forma
+\begin{equation*}
+    A(x)=Wx+b,
+\end{equation*}
+donde \(W\in\mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{in}}}\) es una matriz de pesos y \(b\in\mathbb{R}^{d_{\mathrm{out}}}\) es un vector de sesgos.
+\end{definicion}
+\end{tcolorbox}
+
+Si a la capa afín le aplicamos una activación, obtenemos una capa neuronal.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sean \(d_{\mathrm{in}},d_{\mathrm{out}}\in\mathbb{N}\), sea \(\sigma:\mathbb{R}\to\mathbb{R}\) una función de activación, sea \(W\in\mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{in}}}\), y sea \(b\in\mathbb{R}^{d_{\mathrm{out}}}\). La función
+\begin{equation*}
+    T:\mathbb{R}^{d_{\mathrm{in}}}\to\mathbb{R}^{d_{\mathrm{out}}},
+    \qquad
+    T(x)=\sigma(Wx+b),
+\end{equation*}
+se llama una \textbf{capa neuronal} de ancho \(d_{\mathrm{out}}\).
+\end{definicion}
+\end{tcolorbox}
+
+El número \(d_{\mathrm{out}}\) se llama el \textbf{ancho} de la capa, pues corresponde al número de neuronas de dicha capa. En efecto, si \(W_i\) denota la \(i\)-ésima fila de \(W\), entonces la \(i\)-ésima componente de \(T(x)\) es
+\begin{equation*}
+    T_i(x)
+    =
+    \sigma(\langle W_i,x\rangle+b_i),
+\end{equation*}
+de modo que cada neurona calcula primero una combinación afín de las entradas y luego aplica la activación.
+
+\section{Redes neuronales feedforward}
+
+Una red neuronal feedforward se obtiene componiendo varias capas. La palabra feedforward indica que la información fluye en una sola dirección: desde la entrada hacia la salida, sin ciclos ni retroalimentación interna.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sean \(L\in\mathbb{N}\) y \(d_0,\ldots,d_{L+1}\in\mathbb{N}\). Una \textbf{red neuronal feedforward} de profundidad \(L+1\), dimensiones \((d_0,\ldots,d_{L+1})\), y activación \(\sigma:\mathbb{R}\to\mathbb{R}\), es una función
+\begin{equation*}
+    \Phi(\cdot,w):\mathbb{R}^{d_0}\to\mathbb{R}^{d_{L+1}}
+\end{equation*}
+definida recursivamente por
+\begin{equation*}
+    x^{(0)}:=x,
+\end{equation*}
+\begin{equation*}
+    x^{(\ell+1)}
+    :=
+    \sigma(W^{(\ell)}x^{(\ell)}+b^{(\ell)})
+    \qquad
+    \text{para } \ell=0,\ldots,L-1,
+\end{equation*}
+y
+\begin{equation*}
+    \Phi(x,w)
+    :=
+    W^{(L)}x^{(L)}+b^{(L)}.
+\end{equation*}
+Aquí \(W^{(\ell)}\in\mathbb{R}^{d_{\ell+1}\times d_\ell}\) y \(b^{(\ell)}\in\mathbb{R}^{d_{\ell+1}}\) son los pesos y sesgos de la capa \(\ell\), y
+\begin{equation*}
+    w
+    :=
+    \bigl((W^{(0)},b^{(0)}),\ldots,(W^{(L)},b^{(L)})\bigr)
+\end{equation*}
+denota la colección total de parámetros de la red.
+\end{definicion}
+\end{tcolorbox}
+
+En esta definición, las capas \(0,\ldots,L-1\) se denominan \textbf{capas ocultas}, mientras que la última transformación
+\begin{equation*}
+    x^{(L)}
+    \mapsto
+    W^{(L)}x^{(L)}+b^{(L)}
+\end{equation*}
+se denomina la \textbf{capa de salida}. Es común no aplicar la activación \(\sigma\) en la última capa, especialmente en problemas de regresión. En problemas de clasificación, la salida puede posteriormente transformarse mediante una función adicional, por ejemplo softmax, para obtener un vector de probabilidades.
+
+\section{Preactivaciones y activaciones}
+
+Para el análisis de la red y, en particular, para la retropropagación, conviene distinguir entre preactivaciones y activaciones. Las preactivaciones son los valores antes de aplicar \(\sigma\), mientras que las activaciones son los valores después de aplicar \(\sigma\).
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sea \(\Phi(\cdot,w)\) una red neuronal feedforward. Definimos las \textbf{preactivaciones} \(\widetilde{x}^{(\ell)}\) y las \textbf{activaciones} \(x^{(\ell)}\) mediante
+\begin{equation*}
+    x^{(0)}:=x,
+\end{equation*}
+\begin{equation*}
+    \widetilde{x}^{(\ell+1)}
+    :=
+    W^{(\ell)}x^{(\ell)}+b^{(\ell)}
+    \qquad
+    \text{para } \ell=0,\ldots,L,
+\end{equation*}
+y
+\begin{equation*}
+    x^{(\ell+1)}
+    :=
+    \sigma(\widetilde{x}^{(\ell+1)})
+    \qquad
+    \text{para } \ell=0,\ldots,L-1.
+\end{equation*}
+La salida de la red es
+\begin{equation*}
+    \Phi(x,w)
+    =
+    \widetilde{x}^{(L+1)}
+    =
+    W^{(L)}x^{(L)}+b^{(L)}.
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+Esta notación separa claramente la parte afín de cada capa de la parte no lineal. En particular, para \(\ell=0,\ldots,L-1\), se tiene
+\begin{equation*}
+    x^{(\ell+1)}
+    =
+    \sigma(\widetilde{x}^{(\ell+1)}),
+\end{equation*}
+mientras que la última capa produce directamente la salida del modelo.
+
+\section{Número de parámetros}
+
+El tamaño de una red puede medirse por el número total de parámetros entrenables. Para cada capa \(\ell\), la matriz \(W^{(\ell)}\) tiene \(d_{\ell+1}d_\ell\) entradas, y el vector \(b^{(\ell)}\) tiene \(d_{\ell+1}\) entradas. Por tanto, el número total de parámetros es
+\begin{equation*}
+    N_{\mathrm{par}}
+    =
+    \sum_{\ell=0}^{L}
+    \bigl(d_{\ell+1}d_\ell+d_{\ell+1}\bigr)
+    =
+    \sum_{\ell=0}^{L}
+    d_{\ell+1}(d_\ell+1).
+\end{equation*}
+Este número es importante porque controla, al menos parcialmente, la capacidad expresiva del modelo y el costo computacional del entrenamiento.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+El \textbf{tamaño} de una red neuronal feedforward puede definirse como el número total de parámetros entrenables:
+\begin{equation*}
+    \operatorname{size}(\Phi)
+    :=
+    \sum_{\ell=0}^{L}
+    d_{\ell+1}(d_\ell+1).
+\end{equation*}
+Cuando solo se cuentan los parámetros no nulos, se define
+\begin{equation*}
+    \operatorname{size}_0(\Phi)
+    :=
+    \#\{ \text{parámetros no nulos de } \Phi\}.
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+La cantidad \(\operatorname{size}_0(\Phi)\) es útil cuando se estudian redes dispersas, es decir, redes en las que muchos pesos son iguales a cero. En teoría de aproximación con redes neuronales, a menudo interesa estimar cuántos parámetros no nulos son necesarios para aproximar una función dada con cierto error.
+
+\section{La red como familia paramétrica de funciones}
+
+Una vez fijadas la arquitectura y la activación, una red neuronal define una familia paramétrica de funciones. La arquitectura fija las dimensiones \(d_0,\ldots,d_{L+1}\), mientras que el parámetro \(w\) determina una función particular dentro de esa familia.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Fijadas una arquitectura \((d_0,\ldots,d_{L+1})\) y una activación \(\sigma\), definimos la \textbf{clase de redes neuronales} asociada por
+\begin{equation*}
+    \mathcal{N}_{\sigma}(d_0,\ldots,d_{L+1})
+    :=
+    \{
+        \Phi(\cdot,w):\mathbb{R}^{d_0}\to\mathbb{R}^{d_{L+1}}
+        \mid
+        w \text{ es una colección admisible de pesos y sesgos}
+    \}.
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+Desde este punto de vista, entrenar una red neuronal consiste en escoger una función dentro de la clase \(\mathcal{N}_{\sigma}(d_0,\ldots,d_{L+1})\). Dado un conjunto de datos, esto se hace minimizando una función objetivo que mide qué tan bien la red ajusta los datos.
+
+\section{Interpretación geométrica}
+
+Cada capa transforma el espacio de representaciones. La entrada inicial \(x\in\mathbb{R}^{d_0}\) se transforma primero en \(x^{(1)}\in\mathbb{R}^{d_1}\), luego en \(x^{(2)}\in\mathbb{R}^{d_2}\), y así sucesivamente hasta llegar a la salida \(\Phi(x,w)\in\mathbb{R}^{d_{L+1}}\). Por tanto, una red neuronal puede verse como una sucesión de cambios de coordenadas no lineales:
+\begin{equation*}
+    \mathbb{R}^{d_0}
+    \longrightarrow
+    \mathbb{R}^{d_1}
+    \longrightarrow
+    \cdots
+    \longrightarrow
+    \mathbb{R}^{d_L}
+    \longrightarrow
+    \mathbb{R}^{d_{L+1}}.
+\end{equation*}
+Las capas ocultas construyen representaciones intermedias de los datos. En problemas de clasificación, por ejemplo, se espera que estas representaciones hagan progresivamente más separables las clases. En problemas de regresión, se espera que codifiquen rasgos útiles para aproximar la relación entre entradas y salidas.
+
+\section{Observación sobre profundidad y expresividad}
+
+La profundidad de una red es el número de transformaciones composicionales que se aplican a la entrada. Aumentar la profundidad no solo aumenta el número de parámetros; también cambia la estructura de la familia de funciones que puede representarse. En particular, las redes profundas pueden reutilizar representaciones intermedias y construir funciones mediante composiciones sucesivas, lo cual puede ser más eficiente que intentar representar la misma función mediante una sola capa muy ancha.
+
+Esta observación es una de las razones conceptuales detrás del aprendizaje profundo: en lugar de aprender directamente una función complicada de entrada a salida, se aprende una cadena de transformaciones más simples, cada una parametrizada por pesos, sesgos y una no linealidad.
+
+
+
+
+\chapter{Modelos de lenguaje implementados en \texttt{nicolas-lm}}
+
+En esta sección describimos matemáticamente las familias de modelos de lenguaje implementadas en el repositorio \texttt{nicolas-lm}. El repositorio se concentra en modelos autorregresivos a nivel de caracteres. Esto significa que, dado un vocabulario finito de tokens, el objetivo es modelar la distribución condicional del siguiente token a partir de los tokens anteriores.
+
+\section{Modelado autorregresivo del lenguaje}
+
+Sea \(\mathcal{V}\) un vocabulario finito de tamaño \(m\). Identificamos cada token con un elemento de \(\{0,\ldots,m-1\}\). Una sucesión de tokens se escribe como
+\begin{equation*}
+    x_{0:T}
+    =
+    (x_0,x_1,\ldots,x_T),
+    \qquad
+    x_t\in\mathcal{V}.
+\end{equation*}
+Un modelo de lenguaje autorregresivo busca asignar una probabilidad a la secuencia factorizando su distribución mediante la regla de la cadena:
+\begin{equation*}
+    p_\theta(x_{0:T})
+    =
+    p_\theta(x_0)
+    \prod_{t=0}^{T-1}
+    p_\theta(x_{t+1}\mid x_0,\ldots,x_t).
+\end{equation*}
+En la práctica, el modelo recibe un bloque finito de contexto
+\begin{equation*}
+    (x_0,\ldots,x_{T-1})
+\end{equation*}
+y produce, para cada posición \(t\), un vector de logits
+\begin{equation*}
+    z_t\in\mathbb{R}^m.
+\end{equation*}
+Estos logits parametrizan una distribución categórica sobre el siguiente token mediante la función softmax:
+\begin{equation*}
+    p_\theta(x_{t+1}=j\mid x_{\leq t})
+    =
+    \frac{\exp(z_{t,j})}
+    {\sum_{r=0}^{m-1}\exp(z_{t,r})}.
+\end{equation*}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Un \textbf{modelo de lenguaje autorregresivo} sobre un vocabulario finito \(\mathcal{V}\) es una familia paramétrica de distribuciones condicionales
+\begin{equation*}
+    p_\theta(x_{t+1}\mid x_0,\ldots,x_t),
+\end{equation*}
+donde \(x_0,\ldots,x_t\in\mathcal{V}\). El modelo es \textbf{causal} si la predicción en la posición \(t\) solo depende de tokens en posiciones \(\leq t\), y no de tokens futuros.
+\end{definicion}
+\end{tcolorbox}
+
+El entrenamiento se formula como un problema de máxima verosimilitud condicional. Dada una sucesión de entrenamiento, para cada posición se quiere que el modelo asigne probabilidad alta al token verdadero siguiente. Equivalentemente, se minimiza la pérdida de entropía cruzada introducida en el Capítulo 2, aplicada a la distribución condicional \(p_\theta(\cdot\mid c_i)\) sobre \(\mathcal{V}\):
+\begin{equation*}
+    \mathcal{L}(\theta)
+    =
+    -\frac{1}{N}
+    \sum_{i=1}^{N}
+    \log p_\theta(y_i\mid c_i),
+\end{equation*}
+donde \(c_i\) denota el contexto usado en el ejemplo \(i\), y \(y_i\) el token siguiente verdadero. En la implementación, los logits tienen forma \(\mathbb{R}^{B\times T\times m}\) y los targets forma \(\{0,\ldots,m-1\}^{B\times T}\); la pérdida se evalúa entre los logits aplanados y los tokens verdaderos.
+
+\section{Modelo bigrama}
+
+El modelo más simple implementado en el repositorio es el modelo bigrama. Este modelo predice el siguiente token usando únicamente el token actual. En otras palabras, aproxima
+\begin{equation*}
+    p_\theta(x_{t+1}\mid x_0,\ldots,x_t)
+\end{equation*}
+por una distribución de la forma
+\begin{equation*}
+    p_\theta(x_{t+1}\mid x_t).
+\end{equation*}
+Por tanto, el modelo ignora todo el contexto anterior excepto el último token. Esta hipótesis no es matemáticamente neutral: equivale a postular que la sucesión observada es una \textbf{cadena de Markov de orden uno} sobre \(\V\).
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}[cadena de Markov de orden uno]
+Una sucesión de variables aleatorias \((X_0,X_1,X_2,\ldots)\) con valores en un conjunto finito \(\V\) se llama \textbf{cadena de Markov de orden uno} si, para todo \(t\geq 0\) y todo \(x_0,\ldots,x_{t+1}\in\V\),
+\begin{equation*}
+    \PP(X_{t+1}=x_{t+1}\mid X_0=x_0,\ldots,X_t=x_t)
+    =
+    \PP(X_{t+1}=x_{t+1}\mid X_t=x_t).
+\end{equation*}
+La función \((i,j)\mapsto\PP(X_{t+1}=j\mid X_t=i)\) se llama la \textbf{matriz de transición} de la cadena. Si esta función no depende de \(t\), la cadena se dice \textbf{homogénea}.
+\end{definicion}
+\end{tcolorbox}
+
+El modelo bigrama postula que el corpus es la realización de una cadena de Markov homogénea de orden uno, y la matriz de transición es el objeto a estimar.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}[modelo bigrama]
+Sea \(\V\) un vocabulario finito con \(|\V|=m\). Un \textbf{modelo bigrama} es una familia de distribuciones condicionales
+\begin{equation*}
+    p_\theta(x_{t+1}=j\mid x_t=i),
+    \qquad
+    i,j\in\{0,\ldots,m-1\}.
+\end{equation*}
+Equivalentemente, el modelo está determinado por una matriz de logits
+\begin{equation*}
+    A\in\R^{m\times m},
+\end{equation*}
+donde la fila \(A_i\in\R^m\) contiene los logits de la distribución del siguiente token, condicionada al evento \(x_t=i\). La probabilidad de transición se obtiene aplicando la función softmax fila a fila:
+\begin{equation*}
+    p_\theta(x_{t+1}=j\mid x_t=i)
+    =
+    \softmax(A_i)_j
+    =
+    \frac{\exp(A_{ij})}{\sum_{r=0}^{m-1}\exp(A_{ir})}.
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+\begin{observacion}[número de parámetros]
+El modelo tiene \(m^2\) parámetros reales (las entradas de \(A\)), de los cuales \(m^2-m\) son efectivamente independientes: cada fila tiene \(m-1\) grados de libertad porque la suma de probabilidades es \(1\), lo cual permite fijar una entrada como referencia. En el código de \texttt{nicolas-lm}, la matriz \(A\) se implementa mediante \texttt{Embedding(m,m)}: al consultar el índice \(i\), la tabla devuelve directamente la fila \(A_i\) de logits, lo cual es operacionalmente equivalente a la multiplicación \(\mathbf{1}_i^\top A\) donde \(\mathbf{1}_i\in\R^m\) es el vector one-hot del token \(i\).
+\end{observacion}
+
+Aunque la parametrización es vía logits, el estimador de máxima verosimilitud (MLE) admite una forma cerrada en términos de frecuencias empíricas.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{proposicion}[MLE del bigrama]
+Sea \(s=(c_0,c_1,\ldots,c_{N-1})\in\V^N\) un corpus de tamaño \(N\). Para \(i,j\in\V\) definamos
+\begin{align*}
+    N_i  &= \#\{t\in\{0,\ldots,N-2\}:c_t=i\},\\
+    N_{ij} &= \#\{t\in\{0,\ldots,N-2\}:c_t=i,\,c_{t+1}=j\}.
+\end{align*}
+Entonces los logits \(A\in\R^{m\times m}\) que maximizan la verosimilitud condicional
+\begin{equation*}
+    L(A;s) = \prod_{t=0}^{N-2} \softmax(A_{c_t})_{c_{t+1}}
+\end{equation*}
+satisfacen, para todo \(i\) con \(N_i>0\),
+\begin{equation*}
+    \softmax(A_i^*)_j = \frac{N_{ij}}{N_i},
+    \qquad j=0,\ldots,m-1.
+\end{equation*}
+Es decir, la distribución condicional óptima coincide con la \textbf{frecuencia empírica} de transiciones.
+\end{proposicion}
+\end{tcolorbox}
+
+\begin{proof}
+La log-verosimilitud condicional se descompone fila por fila. Tomando logaritmo,
+\begin{equation*}
+    \log L(A;s)
+    =
+    \sum_{t=0}^{N-2}
+    \log\softmax(A_{c_t})_{c_{t+1}}
+    =
+    \sum_{i=0}^{m-1}\sum_{j=0}^{m-1}
+    N_{ij}\log\softmax(A_i)_j.
+\end{equation*}
+Para \(i\) fijo, el término \(\sum_j N_{ij}\log\softmax(A_i)_j\) depende únicamente de la fila \(A_i\), así que el problema se separa en \(m\) subproblemas independientes. Para cada fila \(i\) con \(N_i>0\), maximizar
+\begin{equation*}
+    f(A_i)
+    =
+    \sum_{j} N_{ij}\log\frac{\exp(A_{ij})}{\sum_r \exp(A_{ir})}
+    =
+    \sum_j N_{ij} A_{ij} - N_i \log\!\sum_r \exp(A_{ir})
+\end{equation*}
+respecto de \(A_i\in\R^m\). Derivando respecto de \(A_{ik}\) e igualando a cero,
+\begin{equation*}
+    \frac{\partial f}{\partial A_{ik}}
+    =
+    N_{ik} - N_i \cdot \softmax(A_i)_k
+    = 0,
+\end{equation*}
+de donde \(\softmax(A_i)_k = N_{ik}/N_i\). Esta solución es única en términos de las probabilidades (no de los logits, que están determinados solo hasta una constante por fila).
+\end{proof}
+
+\begin{observacion}[conexión con la entropía empírica]
+La log-verosimilitud por símbolo en el óptimo es
+\begin{equation*}
+    \frac{1}{N-1}\log L(A^*;s)
+    =
+    -\sum_{i}\frac{N_i}{N-1}\,
+    \widehat H(\widehat p_{i\to\cdot}),
+\end{equation*}
+donde \(\widehat p_{i\to\cdot}=(N_{ij}/N_i)_{j}\) es la distribución condicional empírica y \(\widehat H\) la entropía de Shannon (en nats). Por tanto, el MLE iguala la pérdida de entropía cruzada con la \textbf{entropía condicional empírica} \(\widehat H(X_{t+1}\mid X_t)\). Esta cantidad es siempre menor o igual a la entropía empírica de los \(1\)-gramas, \(\widehat H(X_t)=H_1\), por la desigualdad clásica de información \citep[Cap.~2]{durrett-2019}. La diferencia
+\begin{equation*}
+    \widehat I(X_t;X_{t+1}) = H_1 - \widehat H(X_{t+1}\mid X_t)
+\end{equation*}
+mide cuánta información sobre el siguiente carácter aporta el actual: es la \textbf{información mutua empírica} de un paso.
+\end{observacion}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\textbf{Modelo implementado.} La clase \texttt{BigramLanguageModel} recibe una matriz de índices \(\mathrm{idx}\in\{0,\ldots,m-1\}^{B\times T}\) y devuelve logits \(z\in\R^{B\times T\times m}\). Internamente, la operación es \(z_{b,t,:}=A_{x_{b,t},:}\). Si se proporcionan targets \(y\in\{0,\ldots,m-1\}^{B\times T}\), el modelo calcula la pérdida de entropía cruzada
+\begin{equation*}
+    \mathcal{L}
+    =
+    -\frac{1}{BT}\sum_{b,t}\log\softmax(A_{x_{b,t}})_{y_{b,t}}.
+\end{equation*}
+\end{tcolorbox}
+
+La generación se realiza autorregresivamente: dado un contexto \((x_0,\ldots,x_t)\), el modelo computa \(\softmax(A_{x_t})\) y elige aleatoriamente el siguiente token según esta distribución; luego concatena el resultado al contexto y repite.
+
+El modelo bigrama es útil como línea base. Su limitación esencial es de \emph{capacidad representacional}: aunque la matriz \(A\) podría tener \(m^2\) parámetros distintos, la familia de distribuciones de Markov de orden uno no contiene dependencias más allá del último carácter. Cualquier estructura del lenguaje natural que requiera memoria de más de un símbolo (concordancia gramatical, dependencias léxicas, secuencias dígito-letra) está fuera del alcance de esta familia. Por construcción, los modelos siguientes amplían el contexto considerado.
+
+\section{Transformer causal pequeño}
+
+El segundo modelo implementado es un Transformer decoder-only pequeño. A diferencia del modelo bigrama, este modelo usa un bloque de contexto de longitud finita y permite que la predicción en una posición dependa de todos los tokens anteriores dentro del contexto.
+
+Sea \(T\) el tamaño del bloque, usualmente llamado \texttt{block\_size}. Dado
+\begin{equation*}
+    x_{0:T-1}
+    =
+    (x_0,\ldots,x_{T-1}),
+\end{equation*}
+el modelo produce logits
+\begin{equation*}
+    z_0,\ldots,z_{T-1},
+    \qquad
+    z_t\in\mathbb{R}^m,
+\end{equation*}
+donde \(z_t\) parametriza la distribución del token \(x_{t+1}\). La causalidad impone que \(z_t\) dependa solamente de
+\begin{equation*}
+    x_0,\ldots,x_t,
+\end{equation*}
+y no de \(x_{t+1},\ldots,x_{T-1}\).
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Un \textbf{Transformer causal decoder-only} es un modelo autorregresivo que transforma una sucesión de tokens en una sucesión de representaciones ocultas mediante bloques de autoatención causal y redes feedforward posición-a-posición. La máscara causal garantiza que la representación en la posición \(t\) solo use información de posiciones \(s\leq t\).
+\end{definicion}
+\end{tcolorbox}
+
+\subsection{Embeddings de token y posición}
+
+El primer paso consiste en asociar a cada token un vector en \(\mathbb{R}^d\), donde \(d\) es la dimensión de embedding. Esto se hace mediante una matriz entrenable
+\begin{equation*}
+    E\in\mathbb{R}^{m\times d}.
+\end{equation*}
+Si \(x_t=i\), entonces el embedding de token es
+\begin{equation*}
+    E_{x_t}\in\mathbb{R}^d.
+\end{equation*}
+Como el mecanismo de atención por sí mismo no distingue el orden de los tokens, se añade además un embedding posicional entrenable
+\begin{equation*}
+    P_t\in\mathbb{R}^d,
+    \qquad
+    t=0,\ldots,T-1.
+\end{equation*}
+La representación inicial queda dada por
+\begin{equation*}
+    h_t^{(0)}
+    =
+    E_{x_t}+P_t.
+\end{equation*}
+En forma matricial,
+\begin{equation*}
+    H^{(0)}
+    =
+    E_X+P
+    \in\mathbb{R}^{T\times d}.
+\end{equation*}
+
+\subsection{Autoatención causal}
+
+La operación central del Transformer es la autoatención. Para cada posición, se construyen queries, keys y values mediante transformaciones lineales:
+\begin{equation*}
+    Q=HW_Q,
+    \qquad
+    K=HW_K,
+    \qquad
+    V=HW_V,
+\end{equation*}
+donde
+\begin{equation*}
+    W_Q,W_K,W_V\in\mathbb{R}^{d\times d_h}.
+\end{equation*}
+Para una cabeza de atención, los scores se calculan mediante productos punto escalados:
+\begin{equation*}
+    S
+    =
+    \frac{QK^\top}{\sqrt{d_h}}.
+\end{equation*}
+La máscara causal se define por
+\begin{equation*}
+    M_{ts}
+    =
+    \begin{cases}
+        1, & \text{si } s\leq t,\\
+        0, & \text{si } s>t.
+    \end{cases}
+\end{equation*}
+Así, la posición \(t\) puede atender a la posición \(s\) si y solo si \(s\leq t\). Los scores prohibidos se reemplazan por \(-\infty\) antes de aplicar softmax. Por tanto,
+\begin{equation*}
+    A_{ts}
+    =
+    \frac{\exp(S_{ts})\mathbf{1}_{\{s\leq t\}}}
+    {\sum_{r\leq t}\exp(S_{tr})}.
+\end{equation*}
+La salida de la cabeza es
+\begin{equation*}
+    \operatorname{Attn}(H)
+    =
+    AV.
+\end{equation*}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+La \textbf{autoatención causal escalada} está dada por
+\begin{equation*}
+    \operatorname{Attn}(H)
+    =
+    \operatorname{softmax}
+    \left(
+        \frac{QK^\top}{\sqrt{d_h}}
+        +
+        C
+    \right)V,
+\end{equation*}
+donde \(C_{ts}=0\) si \(s\leq t\), y \(C_{ts}=-\infty\) si \(s>t\). Esta máscara impide que el modelo use información futura.
+\end{definicion}
+\end{tcolorbox}
+
+En multi-head attention, se ejecutan varias cabezas de atención en paralelo. Si hay \(r\) cabezas, cada cabeza produce una salida en \(\mathbb{R}^{d_h}\), y se concatenan las salidas:
+\begin{equation*}
+    \operatorname{MHA}(H)
+    =
+    \operatorname{Concat}(\operatorname{head}_1(H),\ldots,\operatorname{head}_r(H))W_O.
+\end{equation*}
+En el modelo implementado, se exige que
+\begin{equation*}
+    d=r d_h,
+\end{equation*}
+es decir, que la dimensión de embedding sea divisible por el número de cabezas.
+
+A continuación enunciamos tres resultados que aclaran por qué la atención está bien definida desde el punto de vista matemático, por qué la división por \(\sqrt{d_h}\) no es un detalle de implementación arbitrario y qué simetrías respeta o rompe la operación.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{proposicion}[regularidad del softmax]
+La función \(\softmax:\R^m\to\Delta^{m-1}\), donde \(\Delta^{m-1}=\{p\in\R^m_{\geq 0}:\sum_j p_j=1\}\) es el símplex de probabilidad, es de clase \(C^\infty\). Su jacobiano en \(z\in\R^m\) viene dado por
+\begin{equation*}
+    \frac{\partial\softmax(z)_j}{\partial z_k}
+    =
+    \softmax(z)_j\bigl(\delta_{jk}-\softmax(z)_k\bigr),
+    \qquad j,k=0,\ldots,m-1.
+\end{equation*}
+En particular, \(\softmax\) es \textbf{equivariante por traslación constante}: para todo \(c\in\R\),
+\begin{equation*}
+    \softmax(z+c\mathbf{1})=\softmax(z).
+\end{equation*}
+\end{proposicion}
+\end{tcolorbox}
+
+\begin{proof}
+Las exponenciales son de clase \(C^\infty\) y el denominador \(\sum_r \exp(z_r)\) es estrictamente positivo en todo \(\R^m\); luego \(\softmax\) es \(C^\infty\) por composición. Calculamos
+\begin{align*}
+\frac{\partial}{\partial z_k}\frac{e^{z_j}}{\sum_r e^{z_r}}
+&= \frac{\delta_{jk} e^{z_j}\sum_r e^{z_r}-e^{z_j}e^{z_k}}{(\sum_r e^{z_r})^2}\\
+&= \softmax(z)_j\delta_{jk}-\softmax(z)_j\softmax(z)_k,
+\end{align*}
+que es la fórmula del enunciado. La equivariancia por traslación se sigue de
+\(\exp(z_j+c)/\sum_r\exp(z_r+c)=e^c\exp(z_j)/(e^c\sum_r\exp(z_r))\).
+\end{proof}
+
+La equivariancia por traslación es importante en la práctica: para evitar overflow numérico al computar exponenciales de logits grandes, se resta \(\max_r z_r\) antes de exponenciar. El resultado es exactamente el mismo gracias a la proposición anterior. Esto es lo que hace internamente \texttt{torch.nn.functional.softmax}.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{proposicion}[justificación del escalamiento por \(\sqrt{d_h}\)]
+Supongamos que las entradas de \(Q\) y \(K\) son independientes e idénticamente distribuidas con media cero y varianza unitaria. Entonces, para cualesquiera filas \(q_t\in\R^{d_h}\) de \(Q\) y \(k_s\in\R^{d_h}\) de \(K\),
+\begin{equation*}
+    \EE[\langle q_t,k_s\rangle]=0,
+    \qquad
+    \VV(\langle q_t,k_s\rangle)=d_h.
+\end{equation*}
+Por tanto, el producto interno escalado \(\langle q_t,k_s\rangle/\sqrt{d_h}\) tiene varianza unitaria, independiente de la dimensión \(d_h\).
+\end{proposicion}
+\end{tcolorbox}
+
+\begin{proof}
+Por linealidad, \(\EE[\langle q_t,k_s\rangle]=\sum_{i=1}^{d_h}\EE[q_{t,i}]\EE[k_{s,i}]=0\) por independencia de las entradas y media nula. Para la varianza,
+\begin{equation*}
+\VV(\langle q_t,k_s\rangle)
+=\sum_{i=1}^{d_h}\VV(q_{t,i}k_{s,i})
+=\sum_{i=1}^{d_h}\EE[q_{t,i}^2]\EE[k_{s,i}^2]
+=d_h,
+\end{equation*}
+usando independencia y media nula en el segundo paso, y varianza unitaria en el tercero. La división por \(\sqrt{d_h}\) iguala la varianza a uno.
+\end{proof}
+
+\begin{observacion}[consecuencia numérica]
+Sin la escala \(1/\sqrt{d_h}\), los logits del softmax tendrían varianza \(d_h\), y para \(d_h=64\) (como en el modelo implementado) esto significaría que los argumentos del softmax fluctuarían en órdenes de \(\pm\sqrt{64}=8\). El softmax con argumentos así de grandes se vuelve casi una indicatriz (el máximo absorbe casi toda la masa), y su gradiente, dado por la Proposición anterior, se vuelve casi nulo. El escalamiento por \(\sqrt{d_h}\) preserva un régimen donde el softmax es no-saturado y los gradientes son útiles para el entrenamiento.
+\end{observacion}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{proposicion}[equivariancia/invariancia bajo permutaciones]
+Sea \(\pi\in S_T\) una permutación de las \(T\) posiciones, y sea \(P_\pi\in\R^{T\times T}\) la matriz de permutación asociada. Para la \textbf{autoatención sin máscara},
+\begin{equation*}
+    \Attn^{\mathrm{nomask}}(P_\pi H)=P_\pi\,\Attn^{\mathrm{nomask}}(H).
+\end{equation*}
+Es decir, la atención sin máscara es \textbf{equivariante por permutación} de las posiciones. En consecuencia, sin embeddings posicionales, la salida no distingue \((x_0,x_1,\ldots,x_{T-1})\) de cualquiera de sus permutaciones; solo el conjunto multiset \(\{x_t\}\) importa. La adición de embeddings posicionales (sección anterior) rompe esta simetría.
+
+La autoatención \textbf{con} máscara causal \(M_c\) no es equivariante: \(M_c\) depende del orden, y permutar las filas y columnas de \(M_c\) altera el patrón triangular.
+\end{proposicion}
+\end{tcolorbox}
+
+\begin{proof}
+Sin máscara, \(\Attn^{\mathrm{nomask}}(H)=\softmax(QK^\top/\sqrt{d_h})V\) con \(Q=HW_Q\) (y análogamente \(K,V\)). Si reemplazamos \(H\) por \(P_\pi H\), entonces \(Q\) se transforma en \(P_\pi Q\) (y análogamente \(K,V\)). Por tanto
+\begin{equation*}
+    Q'(K')^\top = P_\pi Q K^\top P_\pi^\top.
+\end{equation*}
+Como \(\softmax\) actúa fila a fila y \(P_\pi\) permuta filas de manera invertible,
+\begin{equation*}
+    \softmax(P_\pi QK^\top P_\pi^\top/\sqrt{d_h})
+    =
+    P_\pi\softmax(QK^\top/\sqrt{d_h})P_\pi^\top.
+\end{equation*}
+Multiplicando por \(V'=P_\pi V\),
+\begin{equation*}
+    \Attn^{\mathrm{nomask}}(P_\pi H)
+    =
+    P_\pi\softmax(QK^\top/\sqrt{d_h})\underbrace{P_\pi^\top P_\pi}_{=I}V
+    =
+    P_\pi\,\Attn^{\mathrm{nomask}}(H).\qedhere
+\end{equation*}
+\end{proof}
+
+\begin{observacion}[número de parámetros por bloque]
+Un bloque Transformer pre-norm contiene los siguientes parámetros:
+\begin{itemize}
+    \item Tres matrices \(W_Q,W_K,W_V\in\R^{d\times d}\) (con \(d=r d_h\)) y la proyección de salida \(W_O\in\R^{d\times d}\): en total \(4d^2\) parámetros.
+    \item Dos capas \(\LN\), cada una con \(2d\) parámetros (ganancia y sesgo): \(4d\) parámetros.
+    \item Red feedforward \(W_2\GELU(W_1 x+b_1)+b_2\) con dimensión oculta intermedia, típicamente \(4d\): \(8d^2+5d\) parámetros.
+\end{itemize}
+El total es \(12d^2+9d\) parámetros por bloque. Para \(d=64\), esto da \(12\cdot 4096+576=49\,728\) parámetros por bloque; con \(L=2\) bloques, \(99\,456\) parámetros para el cuerpo del Transformer (sin contar embeddings ni cabeza de salida).
+\end{observacion}
+
+\subsection{Bloque Transformer pre-norm}
+
+El modelo usa bloques Transformer de tipo pre-norm. Esto significa que la normalización se aplica antes de cada subcapa. Cada bloque tiene dos subcapas residuales: autoatención causal y red feedforward.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Un \textbf{bloque Transformer pre-norm} transforma una secuencia de representaciones \(H\) mediante
+\begin{equation*}
+    H'
+    =
+    H+\operatorname{MHA}(\operatorname{LN}(H)),
+\end{equation*}
+\begin{equation*}
+    H_{\mathrm{out}}
+    =
+    H'
+    +
+    \operatorname{FFN}(\operatorname{LN}(H')).
+\end{equation*}
+Aquí \(\operatorname{LN}\) denota LayerNorm, \(\operatorname{MHA}\) denota autoatención causal multi-cabeza, y \(\operatorname{FFN}\) denota una red feedforward aplicada independientemente en cada posición.
+\end{definicion}
+\end{tcolorbox}
+
+La red feedforward del Transformer pequeño tiene la forma
+\begin{equation*}
+    \operatorname{FFN}(x)
+    =
+    W_2\operatorname{GELU}(W_1x+b_1)+b_2,
+\end{equation*}
+donde típicamente la dimensión oculta es \(4d\). En el código, esta subred actúa posición por posición, es decir, no mezcla información entre posiciones; la mezcla entre posiciones ocurre en la atención.
+
+Después de aplicar varios bloques, el modelo aplica una normalización final y una capa lineal hacia el vocabulario:
+\begin{equation*}
+    z_t
+    =
+    W_{\mathrm{out}}h_t+b_{\mathrm{out}}
+    \in\mathbb{R}^m.
+\end{equation*}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\textbf{Modelo implementado.} El modelo \texttt{TinyTransformerLanguageModel} usa embeddings de token, embeddings posicionales aprendidos, una pila de bloques Transformer causales pre-norm, una normalización final y una cabeza lineal de lenguaje. Dado un tensor de índices
+\begin{equation*}
+    \mathrm{idx}\in\{0,\ldots,m-1\}^{B\times T},
+\end{equation*}
+devuelve logits
+\begin{equation*}
+    \mathrm{logits}\in\mathbb{R}^{B\times T\times m}.
+\end{equation*}
+\end{tcolorbox}
+
+Durante la generación, si el contexto acumulado supera el tamaño máximo de bloque, el modelo solo conserva los últimos \(\texttt{block\_size}\) tokens:
+\begin{equation*}
+    x_{\mathrm{cond}}
+    =
+    x_{-T:}.
+\end{equation*}
+Luego calcula los logits de la última posición, aplica softmax y muestrea el siguiente token:
+\begin{equation*}
+    x_{t+1}
+    \sim
+    \operatorname{Categorical}
+    \left(
+        \operatorname{softmax}(z_t)
+    \right).
+\end{equation*}
+
+\section{Modelo estilo LLaMA}
+
+El tercer modelo implementado es una variante decoder-only inspirada en LLaMA. Mantiene la interfaz de entrenamiento del Transformer causal, pero cambia varios componentes arquitectónicos: usa RMSNorm en lugar de LayerNorm, embeddings posicionales rotatorios en la atención, proyecciones sin sesgo y bloques feedforward de tipo SwiGLU.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Un \textbf{modelo estilo LLaMA} en este contexto es un Transformer decoder-only causal que reemplaza algunos componentes del Transformer básico por elecciones arquitectónicas modernas: normalización RMSNorm, embeddings posicionales rotatorios, atención causal multi-cabeza con proyecciones sin sesgo, y redes feedforward de tipo SwiGLU.
+\end{definicion}
+\end{tcolorbox}
+
+\subsection{RMSNorm}
+
+En el Transformer pequeño se usa LayerNorm. En el modelo estilo LLaMA se usa RMSNorm. La diferencia es que RMSNorm no centra el vector restando su media; solo reescala por su raíz cuadrática media y luego aplica un parámetro entrenable de escala.
+
+Sea \(x\in\mathbb{R}^d\). Definimos
+\begin{equation*}
+    \operatorname{RMS}(x)
+    =
+    \left(
+        \frac{1}{d}
+        \sum_{i=1}^{d}x_i^2
+    \right)^{1/2}.
+\end{equation*}
+Entonces RMSNorm tiene la forma
+\begin{equation*}
+    \operatorname{RMSNorm}(x)
+    =
+    g\odot
+    \frac{x}{\sqrt{\frac{1}{d}\sum_{i=1}^{d}x_i^2+\varepsilon}},
+\end{equation*}
+donde \(g\in\mathbb{R}^d\) es un parámetro entrenable y \(\varepsilon>0\) se introduce para estabilidad numérica.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}[RMSNorm]
+La normalización \textbf{RMSNorm} de un vector \(x\in\R^d\) se define por
+\begin{equation*}
+    \RMSN(x)
+    =
+    g\odot x
+    \left(
+        \frac{1}{d}\sum_{i=1}^{d}x_i^2+\varepsilon
+    \right)^{-1/2},
+\end{equation*}
+donde \(g\in\R^d\) es un parámetro entrenable y \(\varepsilon>0\) es una constante de estabilidad numérica. A diferencia de LayerNorm, RMSNorm no resta la media de las coordenadas.
+\end{definicion}
+\end{tcolorbox}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{proposicion}[RMSNorm como LayerNorm sin centrado]
+Sea \(\LN(x)=g\odot\bigl((x-\mu(x))/\sigma(x)\bigr)+b\) la normalización LayerNorm clásica con \(\mu(x)=\tfrac1d\sum_i x_i\) y \(\sigma(x)^2=\tfrac1d\sum_i (x_i-\mu(x))^2\), donde \(g,b\in\R^d\) son aprendibles. Entonces \(\RMSN\) coincide con \(\LN\) en la restricción \(\mu(x)=0\) y \(b=0\), pues bajo esa restricción \(\sigma(x)^2=\tfrac1d\sum_i x_i^2\) y por tanto \(\LN(x)=g\odot x/\sigma(x)\).
+
+En particular, \(\RMSN\) tiene \(d\) parámetros entrenables (solo \(g\)), mientras que \(\LN\) tiene \(2d\) (\(g\) y \(b\)).
+\end{proposicion}
+\end{tcolorbox}
+
+\begin{observacion}[costo computacional]
+LayerNorm requiere dos pasadas sobre el vector \(x\): una para computar la media \(\mu(x)\) y otra para computar la varianza \(\sigma(x)^2\) usando la media. RMSNorm requiere una sola pasada (computa directamente \(\sum_i x_i^2\)). En arquitecturas con muchas capas y dimensiones altas, esta diferencia se acumula: \citet{zhang-sennrich-2019-rmsnorm} reportan reducciones del orden de 7\,\%--64\,\% en el tiempo de inferencia respecto de LayerNorm, sin pérdida sustancial de desempeño.
+\end{observacion}
+
+\subsection{Embeddings posicionales rotatorios}
+
+El modelo estilo LLaMA no usa embeddings posicionales aprendidos sumados a los embeddings de token. En cambio, incorpora información posicional mediante rotary positional embeddings, o RoPE, aplicados a las queries y keys de la atención.
+
+La idea es dividir la dimensión de cada cabeza en pares de coordenadas y aplicar a cada par una rotación que depende de la posición. Si \(x_{2r},x_{2r+1}\) son dos coordenadas consecutivas, se define
+\begin{equation*}
+    \begin{pmatrix}
+        \widetilde{x}_{2r}\\
+        \widetilde{x}_{2r+1}
+    \end{pmatrix}
+    =
+    \begin{pmatrix}
+        \cos\theta_{t,r} & -\sin\theta_{t,r}\\
+        \sin\theta_{t,r} & \cos\theta_{t,r}
+    \end{pmatrix}
+    \begin{pmatrix}
+        x_{2r}\\
+        x_{2r+1}
+    \end{pmatrix},
+\end{equation*}
+donde \(t\) es la posición del token. En el código, los ángulos se construyen usando frecuencias inversas de la forma
+\begin{equation*}
+    \omega_r
+    =
+    10000^{-2r/d_h},
+\end{equation*}
+de modo que
+\begin{equation*}
+    \theta_{t,r}
+    =
+    t\omega_r.
+\end{equation*}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Los \textbf{embeddings posicionales rotatorios} aplican una rotación dependiente de la posición a cada par de coordenadas de las queries y keys:
+\begin{equation*}
+    (x_{2r},x_{2r+1})
+    \mapsto
+    (x_{2r}\cos\theta_{t,r}-x_{2r+1}\sin\theta_{t,r},
+    x_{2r}\sin\theta_{t,r}+x_{2r+1}\cos\theta_{t,r}).
+\end{equation*}
+Por esta razón, la dimensión de cada cabeza debe ser par.
+\end{definicion}
+\end{tcolorbox}
+
+En el modelo implementado, RoPE se aplica a \(Q\) y \(K\), pero no a \(V\):
+\begin{equation*}
+    Q=\operatorname{RoPE}(HW_Q),
+    \qquad
+    K=\operatorname{RoPE}(HW_K),
+    \qquad
+    V=HW_V.
+\end{equation*}
+
+La propiedad central de RoPE, que la distingue de los embeddings posicionales aprendidos, es que el producto interno entre queries y keys depende solo de la diferencia de posiciones, no de las posiciones absolutas.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{teorema}[invariancia bajo traslación relativa]
+Sea \(R_p:\R^{d_h}\to\R^{d_h}\) la aplicación bloque-diagonal cuyo bloque \(2\times 2\) número \(r\) es la rotación por el ángulo \(p\omega_r\), donde \(\omega_r=10000^{-2r/d_h}\) y \(d_h\) es par. Entonces, para cualesquiera \(q,k\in\R^{d_h}\) y cualesquiera posiciones \(t,s\in\Z\),
+\begin{equation*}
+    \langle R_t q,\,R_s k\rangle = \langle q,\,R_{s-t}k\rangle.
+\end{equation*}
+En particular, el producto interno depende solo de \(s-t\), no de \(s\) ni \(t\) por separado.
+\end{teorema}
+\end{tcolorbox}
+
+\begin{proof}
+Las matrices \(R_p\) son ortogonales (rotación bloque a bloque), de modo que \(R_p^\top=R_{-p}\). Además, las rotaciones forman un grupo conmutativo en cada par \(2\times 2\): \(R_a R_b=R_{a+b}\) (la suma de ángulos). Por tanto,
+\begin{equation*}
+    \langle R_t q,R_s k\rangle = q^\top R_t^\top R_s k = q^\top R_{-t}R_s k = q^\top R_{s-t}k = \langle q,R_{s-t}k\rangle.\qedhere
+\end{equation*}
+\end{proof}
+
+\begin{observacion}[interpretación]
+Este resultado dice que el peso de atención que la posición \(t\) le asigna a la posición \(s\), proporcional a \(\langle R_t q_t,R_s k_s\rangle\), depende solo de \emph{la distancia} \(s-t\), no de la ubicación absoluta. Esto generaliza bien a contextos más largos que los vistos durante el entrenamiento: con embeddings posicionales aprendidos, cualquier posición fuera del rango de entrenamiento es un vector no entrenado; con RoPE, la operación está bien definida para cualquier \(t\in\Z\) y su efecto sobre los productos internos es continuo en \(t\). En la implementación, la dimensión \(d_h\) debe ser par para que el agrupamiento por pares tenga sentido.
+\end{observacion}
+
+\subsection{Atención causal estilo LLaMA}
+
+La atención causal del modelo estilo LLaMA sigue siendo atención escalada multi-cabeza con máscara causal:
+\begin{equation*}
+    S
+    =
+    \frac{QK^\top}{\sqrt{d_h}},
+\end{equation*}
+seguida de máscara causal y softmax:
+\begin{equation*}
+    A_{ts}
+    =
+    \frac{\exp(S_{ts})\mathbf{1}_{\{s\leq t\}}}
+    {\sum_{r\leq t}\exp(S_{tr})}.
+\end{equation*}
+La salida es
+\begin{equation*}
+    \operatorname{Attn}(H)
+    =
+    AVW_O.
+\end{equation*}
+La diferencia con el Transformer pequeño es que las proyecciones \(W_Q,W_K,W_V,W_O\) se implementan sin sesgo, y que \(Q\) y \(K\) incorporan información posicional mediante RoPE.
+
+\subsection{SwiGLU}
+
+Otra diferencia importante aparece en la red feedforward. El Transformer pequeño usa una red feedforward con GELU. El modelo estilo LLaMA usa un bloque SwiGLU.
+
+Dado \(x\in\mathbb{R}^d\), se calculan dos proyecciones hacia una dimensión oculta:
+\begin{equation*}
+    a=W_{\mathrm{gate}}x,
+    \qquad
+    b=W_{\mathrm{up}}x.
+\end{equation*}
+Luego se aplica la función SiLU a la rama de compuerta:
+\begin{equation*}
+    \operatorname{SiLU}(a)
+    =
+    a\odot \sigma_{\mathrm{sigmoid}}(a),
+\end{equation*}
+y se multiplica componente a componente por la otra rama:
+\begin{equation*}
+    u
+    =
+    \operatorname{SiLU}(a)\odot b.
+\end{equation*}
+Finalmente, se proyecta de vuelta a la dimensión de embedding:
+\begin{equation*}
+    \operatorname{SwiGLU}(x)
+    =
+    W_{\mathrm{down}}
+    \bigl(
+        \operatorname{SiLU}(W_{\mathrm{gate}}x)
+        \odot
+        W_{\mathrm{up}}x
+    \bigr).
+\end{equation*}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}[SwiGLU]
+Un bloque \textbf{SwiGLU} es una red feedforward con compuerta multiplicativa dada por
+\begin{equation*}
+    \SwiGLU(x)
+    =
+    W_{\mathrm{down}}
+    \left(
+        \SiLU(W_{\mathrm{gate}}x)
+        \odot
+        W_{\mathrm{up}}x
+    \right),
+\end{equation*}
+donde \(\SiLU(z)=z\cdot\sigma_{\mathrm{log}}(z)\) y \(\sigma_{\mathrm{log}}(z)=(1+e^{-z})^{-1}\). La multiplicación componente a componente permite que una rama module la información que pasa por la otra.
+\end{definicion}
+\end{tcolorbox}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{proposicion}[propiedades de SiLU]
+La función \(\SiLU:\R\to\R\), definida por \(\SiLU(z)=z\,\sigma_{\mathrm{log}}(z)\), satisface:
+\begin{enumerate}
+\item Es \(C^\infty(\R)\).
+\item Su derivada es \(\SiLU'(z)=\sigma_{\mathrm{log}}(z)+z\,\sigma_{\mathrm{log}}(z)(1-\sigma_{\mathrm{log}}(z))\).
+\item Es asintóticamente equivalente a la función rectificadora: \(\SiLU(z)\to 0\) cuando \(z\to-\infty\) y \(\SiLU(z)-z\to 0\) cuando \(z\to+\infty\).
+\item No es monótona: tiene un mínimo global en \(z^*\approx -1.278\), con valor \(\SiLU(z^*)\approx -0.278\).
+\end{enumerate}
+\end{proposicion}
+\end{tcolorbox}
+
+\begin{proof}
+La propiedad (1) sigue de que \(\sigma_{\mathrm{log}}\) es \(C^\infty\) por ser composición de funciones elementales con denominador estrictamente positivo. La derivada en (2) se obtiene por la regla del producto, usando \(\sigma_{\mathrm{log}}'(z)=\sigma_{\mathrm{log}}(z)(1-\sigma_{\mathrm{log}}(z))\). Los límites en (3) salen de \(\sigma_{\mathrm{log}}(z)\to 0\) cuando \(z\to-\infty\) y \(\sigma_{\mathrm{log}}(z)\to 1\) cuando \(z\to+\infty\). Para (4), igualando \(\SiLU'(z)=0\) y resolviendo numéricamente se obtiene \(z^*\approx -1.278\); que el extremo es un mínimo se verifica calculando \(\SiLU''(z^*)>0\) \citep{elfwing-uchibe-doya-2018-silu}.
+\end{proof}
+
+La propiedad (4), no monotonía, distingue a \(\SiLU\) de ReLU y de la sigmoide clásica, y se ha conjeturado que aporta capacidad adicional a las arquitecturas que la usan.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{proposicion}[gradiente de SwiGLU respecto de \(x\)]
+Sean \(a=W_{\mathrm{gate}}x\), \(b=W_{\mathrm{up}}x\) y \(s=\SiLU(a)\odot b\). El jacobiano de \(\SwiGLU\) en \(x\) es
+\begin{equation*}
+    \frac{\partial\SwiGLU(x)}{\partial x}
+    =
+    W_{\mathrm{down}}\Bigl(
+    \mathrm{diag}(\SiLU'(a)\odot b)W_{\mathrm{gate}}
+    +
+    \mathrm{diag}(\SiLU(a))W_{\mathrm{up}}
+    \Bigr).
+\end{equation*}
+\end{proposicion}
+\end{tcolorbox}
+
+\begin{proof}
+Aplicamos la regla del producto a \(s=\SiLU(a)\odot b\):
+\begin{equation*}
+    \frac{\partial s}{\partial x}=\mathrm{diag}(\SiLU'(a)\odot b)\,\frac{\partial a}{\partial x}+\mathrm{diag}(\SiLU(a))\,\frac{\partial b}{\partial x}.
+\end{equation*}
+Sustituyendo \(\partial a/\partial x=W_{\mathrm{gate}}\) y \(\partial b/\partial x=W_{\mathrm{up}}\), y luego componiendo con \(W_{\mathrm{down}}\) por la izquierda, obtenemos la fórmula.
+\end{proof}
+
+\begin{observacion}[SwiGLU frente a FFN-GELU]
+El bloque feedforward estándar del Transformer es \(\FFN(x)=W_2\GELU(W_1 x+b_1)+b_2\), con dimensión oculta intermedia \(d_h^{\mathrm{ffn}}\). El bloque SwiGLU sustituye este por una operación con \emph{dos} proyecciones de entrada (\(W_{\mathrm{gate}}\) y \(W_{\mathrm{up}}\)) más una de salida (\(W_{\mathrm{down}}\)). Si todas son del mismo tamaño \(d\times d_h^{\mathrm{ffn}}\), SwiGLU tiene \(3 d\,d_h^{\mathrm{ffn}}\) parámetros frente a \(2d\,d_h^{\mathrm{ffn}}\) del FFN estándar (un \(50\%\) más). Por convención, los modelos tipo LLaMA reducen \(d_h^{\mathrm{ffn}}\) de \(4d\) a aproximadamente \(\tfrac{2}{3}\cdot 4d\) para mantener un conteo de parámetros similar; véase \citet{touvron-2023-llama}.
+\end{observacion}
+
+\subsection{Bloque Transformer estilo LLaMA}
+
+Un bloque estilo LLaMA combina RMSNorm, atención causal con RoPE y SwiGLU mediante conexiones residuales. La estructura es pre-norm:
+\begin{equation*}
+    H'
+    =
+    H
+    +
+    \operatorname{Attn}_{\mathrm{RoPE}}
+    \bigl(
+        \operatorname{RMSNorm}(H)
+    \bigr),
+\end{equation*}
+\begin{equation*}
+    H_{\mathrm{out}}
+    =
+    H'
+    +
+    \operatorname{SwiGLU}
+    \bigl(
+        \operatorname{RMSNorm}(H')
+    \bigr).
+\end{equation*}
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\textbf{Modelo implementado.} El modelo \texttt{LLaMAStyleLanguageModel} es un modelo causal a nivel de caracteres que usa embeddings de token, una pila de bloques estilo LLaMA, una RMSNorm final y una cabeza lineal hacia el vocabulario. A diferencia del Transformer pequeño, no usa embeddings posicionales aprendidos; la información posicional entra mediante RoPE dentro de la atención.
+\end{tcolorbox}
+
+Dado un tensor de entrada
+\begin{equation*}
+    \mathrm{idx}\in\{0,\ldots,m-1\}^{B\times T},
+\end{equation*}
+el modelo calcula
+\begin{equation*}
+    H^{(0)}
+    =
+    E_{\mathrm{tok}}(\mathrm{idx}),
+\end{equation*}
+luego aplica \(N\) bloques estilo LLaMA:
+\begin{equation*}
+    H^{(\ell+1)}
+    =
+    \operatorname{Block}_{\ell}(H^{(\ell)}),
+    \qquad
+    \ell=0,\ldots,N-1,
+\end{equation*}
+después una RMSNorm final:
+\begin{equation*}
+    \widetilde{H}
+    =
+    \operatorname{RMSNorm}(H^{(N)}),
+\end{equation*}
+y finalmente una proyección lineal sin sesgo hacia el vocabulario:
+\begin{equation*}
+    z_t
+    =
+    W_{\mathrm{lm}}\widetilde{h}_t
+    \in\mathbb{R}^m.
+\end{equation*}
+
+\subsection{Por qué estas modificaciones son estilo LLaMA}
+
+Las modificaciones anteriores no son meramente cambios de notación. Cada una altera de manera concreta la forma en que el modelo procesa información.
+
+Primero, RMSNorm reemplaza LayerNorm por una normalización más simple. Si \(x\in\mathbb{R}^d\), LayerNorm normaliza usando la media y la varianza empíricas de las coordenadas, mientras que RMSNorm solo normaliza por la magnitud cuadrática media:
+\begin{equation*}
+    \operatorname{RMS}(x)
+    =
+    \left(
+        \frac{1}{d}
+        \sum_{i=1}^{d}x_i^2
+    \right)^{1/2}.
+\end{equation*}
+Por tanto, RMSNorm preserva la dirección del vector hasta un reescalamiento componente a componente entrenable, sin centrar las coordenadas. Esto reduce ligeramente la complejidad de la normalización y es una de las decisiones arquitectónicas características de modelos estilo LLaMA.
+
+Segundo, RoPE introduce la posición directamente dentro del mecanismo de atención, en lugar de sumar un embedding posicional aprendido a la entrada. En un Transformer con embeddings posicionales aprendidos, la representación inicial tiene la forma
+\begin{equation*}
+    h_t^{(0)}
+    =
+    E_{x_t}+P_t.
+\end{equation*}
+En cambio, con RoPE, la información posicional aparece al transformar las queries y keys:
+\begin{equation*}
+    Q_t
+    \mapsto
+    \operatorname{RoPE}_t(Q_t),
+    \qquad
+    K_s
+    \mapsto
+    \operatorname{RoPE}_s(K_s).
+\end{equation*}
+Así, los productos internos que determinan la atención,
+\begin{equation*}
+    \langle Q_t,K_s\rangle,
+\end{equation*}
+pasan a depender también de las posiciones \(t\) y \(s\). La posición no se agrega como un vector adicional al embedding inicial, sino que modifica geométricamente las direcciones usadas para calcular similitud en atención.
+
+Tercero, SwiGLU reemplaza la red feedforward usual por una red con compuerta multiplicativa. En una red feedforward estándar, una forma típica es
+\begin{equation*}
+    \operatorname{FFN}(x)
+    =
+    W_2\phi(W_1x).
+\end{equation*}
+En cambio, SwiGLU usa dos proyecciones internas:
+\begin{equation*}
+    \operatorname{SwiGLU}(x)
+    =
+    W_{\mathrm{down}}
+    \left(
+        \operatorname{SiLU}(W_{\mathrm{gate}}x)
+        \odot
+        W_{\mathrm{up}}x
+    \right).
+\end{equation*}
+La primera rama actúa como una compuerta, porque decide componente a componente qué información de la segunda rama se deja pasar. Esta multiplicación componente a componente aumenta la expresividad local del bloque feedforward.
+
+El bloque completo (ya definido en la subsección anterior) conserva la estructura residual pre-norm del Transformer, sustituyendo \(\operatorname{LayerNorm}\to\operatorname{RMSNorm}\), \(\operatorname{Attn}\to\operatorname{Attn}_{\mathrm{RoPE}}\) y \(\operatorname{FFN}\to\operatorname{SwiGLU}\). Por eso el modelo sigue siendo un Transformer decoder-only, pero con elecciones arquitectónicas más cercanas a las usadas en modelos modernos tipo LLaMA.
+
+\section{Comparación de los tres modelos}
+
+Los tres modelos comparten la misma interfaz general: reciben índices de tokens, producen logits sobre el vocabulario, pueden calcular entropía cruzada si se proporcionan targets, y generan texto mediante muestreo autorregresivo. Sin embargo, difieren en la forma de representar el contexto.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\textbf{Resumen.} En \texttt{nicolas-lm} aparecen tres familias principales de modelos:
+\begin{enumerate}
+    \item El \textbf{modelo bigrama}, que modela \(p(x_{t+1}\mid x_t)\) y solo usa el token actual.
+    \item El \textbf{Transformer causal pequeño}, que modela \(p(x_{t+1}\mid x_0,\ldots,x_t)\) usando embeddings posicionales aprendidos, autoatención causal multi-cabeza, LayerNorm y feedforward con GELU.
+    \item El \textbf{modelo estilo LLaMA}, que conserva la estructura causal decoder-only, pero usa RMSNorm, RoPE, proyecciones sin sesgo y SwiGLU.
+\end{enumerate}
+\end{tcolorbox}
+
+El modelo bigrama tiene el menor costo computacional y sirve como línea base. Su contexto efectivo tiene longitud \(1\). El Transformer causal pequeño usa un contexto de longitud \(\texttt{block\_size}\) y puede aprender dependencias entre posiciones anteriores mediante atención. El modelo estilo LLaMA conserva la capacidad contextual del Transformer, pero incorpora decisiones arquitectónicas modernas que suelen mejorar la estabilidad y eficiencia del entrenamiento.
+
+\section{Pérdida común de entrenamiento}
+
+Aunque las arquitecturas son distintas, el objetivo de entrenamiento es el mismo. Para cada posición, el modelo produce logits sobre el vocabulario y se minimiza la entropía cruzada respecto del siguiente token verdadero. Si \(z_{b,t}\in\mathbb{R}^m\) son los logits para el elemento \(b\) del batch y la posición \(t\), y \(y_{b,t}\in\{0,\ldots,m-1\}\) es el token objetivo, la pérdida promedio es
+\begin{equation*}
+    \mathcal{L}
+    =
+    \frac{1}{BT}
+    \sum_{b=1}^{B}
+    \sum_{t=1}^{T}
+    \operatorname{CE}(z_{b,t},y_{b,t}),
+\end{equation*}
+donde \(\operatorname{CE}(z,y)=-\log\operatorname{softmax}(z)_y\) es la entropía cruzada categórica entre los logits \(z\) y el token verdadero \(y\), tal como se definió en el Capítulo 2.
+
+\section{Generación autorregresiva}
+
+Los tres modelos generan texto mediante el mismo esquema conceptual. Dado un contexto inicial \(x_{0:t}\), se calcula la distribución del siguiente token:
+\begin{equation*}
+    p_\theta(\cdot\mid x_{\leq t})
+    =
+    \operatorname{softmax}(z_t).
+\end{equation*}
+Luego se muestrea
+\begin{equation*}
+    x_{t+1}
+    \sim
+    p_\theta(\cdot\mid x_{\leq t}),
+\end{equation*}
+y se concatena el nuevo token al contexto. Repitiendo este procedimiento se obtiene una secuencia generada:
+\begin{equation*}
+    x_0,x_1,\ldots,x_t,x_{t+1},x_{t+2},\ldots.
+\end{equation*}
+Para los modelos con tamaño máximo de contexto, si la longitud del contexto excede \(\texttt{block\_size}\), se usa únicamente la ventana más reciente:
+\begin{equation*}
+    x_{t-\texttt{block\_size}+1:t}.
+\end{equation*}
+
+\section{Interpretación dentro del proyecto}
+
+Dentro del proyecto, estos modelos forman una progresión natural de complejidad. El modelo bigrama permite entender el caso más simple de estimación de distribuciones condicionales entre tokens. El Transformer causal introduce el mecanismo central de los modelos modernos de lenguaje: la autoatención causal. El modelo estilo LLaMA conserva la estructura Transformer, pero reemplaza componentes básicos por variantes usadas en arquitecturas modernas.
+
+Por tanto, el repositorio no solo implementa modelos, sino que organiza una ruta conceptual:
+\begin{equation*}
+    \text{bigrama}
+    \longrightarrow
+    \text{Transformer causal}
+    \longrightarrow
+    \text{Transformer estilo LLaMA}.
+\end{equation*}
+Esta progresión permite estudiar cómo aumenta la capacidad de modelar dependencias contextuales a medida que se enriquecen la arquitectura y los mecanismos internos del modelo.
+
+
+\chapter{Entrenamiento de redes neuronales}
+
+Hasta este punto, hemos discutido la representación y aproximación de ciertas clases de funciones usando redes neuronales. El segundo pilar del aprendizaje profundo concierne la pregunta de cómo ajustar una red neuronal a datos dados, es decir, habiendo fijado una arquitectura, cómo encontrar pesos y sesgos adecuados. Esto equivale a minimizar una llamada \textbf{función objetivo}, como el riesgo empírico definido en el Capítulo 2. A lo largo de este capítulo denotamos la función objetivo por
+\begin{equation*}
+    F:\mathbb{R}^n\to\mathbb{R},
+\end{equation*}
+y la interpretamos como una función de todos los pesos y sesgos de la red neuronal, reunidos en un vector en \(\mathbb{R}^n\). El objetivo\footnote{En realidad, el objetivo es más matizado: más que simplemente minimizar la función objetivo \(F\), queremos encontrar un parámetro \(w\) que produzca un modelo que generalice bien, es decir, un riesgo poblacional pequeño (esto se discute en el Capítulo 2). Sin embargo, en este capítulo adoptamos la perspectiva de minimizar \(F\).} es determinar aproximadamente un \textbf{minimizador}, es decir, algún \(w_* \in \mathbb{R}^n\) que satisfaga
+\begin{equation*}
+    F(w_*)\leq F(w)
+    \qquad
+    \text{para todo } w\in\mathbb{R}^n.
+\end{equation*}
+
+Los enfoques estándar incluyen principalmente variantes del descenso de gradiente estocástico. Estos son el foco del presente capítulo, en el que discutimos ideas básicas y resultados en optimización convexa usando algoritmos basados en gradiente. En las Secciones 10.1 y 10.2 exploramos el descenso de gradiente y el descenso de gradiente estocástico, y proporcionamos tasas de convergencia para objetivos suaves y fuertemente convexos. La Sección 5.3 discute tamaños de paso adaptativos y explica los principios centrales detrás de algoritmos populares como Adam. Finalmente, la Sección 5.4 introduce el algoritmo de retropropagación, que permite la aplicación eficiente de métodos basados en gradiente al entrenamiento de redes neuronales.
+
+\section{Descenso de gradiente}
+
+La idea general del descenso de gradiente es comenzar con algún \(w_0\in\mathbb{R}^n\), y luego aplicar actualizaciones secuenciales moviéndose en la dirección de \textit{descenso más pronunciado} de la función objetivo. Supongamos por el momento que \(F\in C^2(\mathbb{R}^n)\), y denotemos por \(w_k\) el \(k\)-ésimo iterado. Entonces
+\begin{equation*}
+    F(w_k+v)
+    =
+    F(w_k)+v^\top \nabla F(w_k)+O(\|v\|^2)
+    \qquad
+    \text{para } \|v\|\to 0.
+    \tag{5.1.1}
+\end{equation*}
+Esto muestra que el cambio en \(F\) alrededor de \(w_k\) está descrito localmente por el gradiente \(\nabla F(w_k)\). Para \(v\) pequeño, la contribución del término de segundo orden es despreciable, y la dirección \(v\) a lo largo de la cual la disminución de la función objetivo es máxima es igual al gradiente negativo \(-\nabla F(w_k)\). Así, \(-\nabla F(w_k)\) también se llama la dirección de descenso más pronunciado. Esto conduce a una actualización de la forma
+\begin{equation*}
+    w_{k+1}:=w_k-h_k\nabla F(w_k),
+    \tag{5.1.2}
+\end{equation*}
+donde \(h_k>0\) se denomina el \textbf{tamaño de paso} o \textbf{tasa de aprendizaje}. Nos referimos a este algoritmo iterativo como \textbf{descenso de gradiente}.
+
+Por (5.1.1) y (5.1.2), se tiene, también véase \cite[Sección 1.2]{boyd-vandenberghe-2004},
+\begin{equation*}
+    F(w_{k+1})
+    =
+    F(w_k)-h_k\|\nabla F(w_k)\|^2+O(h_k^2),
+    \tag{5.1.3}
+\end{equation*}
+de modo que, si \(\nabla F(w_k)\neq 0\), un tamaño de paso suficientemente pequeño \(h_k\) garantiza que el algoritmo disminuya el valor de la función objetivo. En la práctica, ajustar la tasa de aprendizaje \(h_k\) puede ser un asunto sutil, pues debe lograr un balance entre los siguientes requerimientos discrepantes:
+
+\begin{enumerate}
+    \item[(i)] \(h_k\) debe ser suficientemente pequeño para que el término de segundo orden en (5.1.3) no domine, y la actualización (5.1.2) disminuya la función objetivo.
+
+    \item[(ii)] \(h_k\) debe ser suficientemente grande para asegurar una disminución significativa de la función objetivo, lo cual facilita una convergencia más rápida del algoritmo.
+\end{enumerate}
+
+Una tasa de aprendizaje demasiado alta puede sobrepasar el mínimo, mientras que una tasa demasiado baja resulta en una convergencia lenta. Estrategias comunes incluyen, en particular, tasas de aprendizaje constantes \((h_k=h\) para todo \(k\in\mathbb{N}_0)\), esquemas de tasas de aprendizaje tales como tasas decrecientes \((h_k\downarrow 0\) cuando \(k\to\infty)\), y métodos adaptativos. Para métodos adaptativos, el algoritmo ajusta dinámicamente \(h_k\) con base en los valores de \(F(w_j)\) o \(\nabla F(w_j)\) para \(j\leq k\), véase la Sección 5.3 más adelante.
+
+\subsection{Condiciones estructurales y existencia de minimizadores}
+
+Comenzamos nuestro análisis discutiendo tres nociones clave para analizar algoritmos de descenso de gradiente, empezando con una descripción geométrica intuitiva, aunque imprecisa. Una función continuamente diferenciable \(F:\mathbb{R}^n\to\mathbb{R}\) será llamada
+
+\begin{enumerate}
+    \item[(i)] \textit{suave} si, en cada \(w\in\mathbb{R}^n\), \(F\) está acotada superior e inferiormente por una función cuadrática que toca su gráfica en \(w\),
+
+    \item[(ii)] \textit{convexa} si, en cada \(w\in\mathbb{R}^n\), \(F\) yace por encima de su tangente en \(w\),
+
+    \item[(iii)] \textit{fuertemente convexa} si, en cada \(w\in\mathbb{R}^n\), \(F\) yace por encima de su tangente en \(w\) más un término cuadrático convexo.
+\end{enumerate}
+
+A continuación damos las definiciones matemáticas precisas.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sean \(n\in\mathbb{N}\) y \(L>0\). Una función \(F:\mathbb{R}^n\to\mathbb{R}\) se llama \textbf{\(L\)-suave} si \(F\in C^1(\mathbb{R}^n)\) y
+\begin{equation*}
+    F(v)
+    \leq
+    F(w)+\langle \nabla F(w),v-w\rangle
+    +
+    \frac{L}{2}\|w-v\|^2
+    \qquad
+    \text{para todo } w,v\in\mathbb{R}^n,
+    \tag{5.1.4a}
+\end{equation*}
+\begin{equation*}
+    F(v)
+    \geq
+    F(w)+\langle \nabla F(w),v-w\rangle
+    -
+    \frac{L}{2}\|w-v\|^2
+    \qquad
+    \text{para todo } w,v\in\mathbb{R}^n.
+    \tag{5.1.4b}
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+Por definición, las funciones \(L\)-suaves satisfacen la propiedad geométrica (i). En la literatura, la \(L\)-suavidad se define a menudo en cambio como continuidad Lipschitz del gradiente:
+\begin{equation*}
+    \|\nabla F(w)-\nabla F(v)\|
+    \leq
+    L\|w-v\|
+    \qquad
+    \text{para todo } w,v\in\mathbb{R}^n,
+    \tag{5.1.5}
+\end{equation*}
+lo cual es equivalente, como muestra el siguiente lema; véase, por ejemplo, \cite{beck-2017,nesterov-2018}.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{lema}
+Sea \(L>0\). Entonces \(F\in C^1(\mathbb{R}^n)\) es \(L\)-suave si y solo si se cumple (5.1.5).
+\end{lema}
+\end{tcolorbox}
+
+\textbf{Demostración.} Solo mostramos que (5.1.4) implica (5.1.5). El hecho de que (5.1.5) implica (5.1.4) se deja como Ejercicio 10.17.
+
+\textbf{Paso 1.} Supongamos primero que \(F\in C^2(\mathbb{R}^n)\), y que (5.1.5) no se cumple. Entonces podemos encontrar \(w\neq v\) con
+\begin{equation*}
+    \|w-v\|
+    \sup_{\|\ell\|=1}
+    \int_0^1
+    \ell^\top
+    \nabla^2F(v+t(w-v))
+    \frac{w-v}{\|w-v\|}
+    \,dt
+    =
+    \|\nabla F(w)-\nabla F(v)\|
+    >
+    L\|w-v\|,
+\end{equation*}
+donde \(\nabla^2F\in\mathbb{R}^{n\times n}\) denota la Hessiana. Puesto que la Hessiana es simétrica, esto implica la existencia de \(u,e\in\mathbb{R}^n\) con \(\|e\|=1\) y \(|e^\top\nabla^2F(u)e|>L\). Por tanto, o bien
+\begin{equation*}
+    e^\top\nabla^2F(u)e>L
+    \qquad
+    \text{o}
+    \qquad
+    -e^\top\nabla^2F(u)e>L.
+    \tag{5.1.6}
+\end{equation*}
+Supongamos que se cumple la primera desigualdad. Para \(h>0\), por la fórmula de Taylor,
+\begin{equation*}
+    F(u+he)
+    =
+    F(u)+h\langle\nabla F(u),e\rangle
+    +
+    \int_0^h
+    e^\top\nabla^2F(u+te)e(h-t)\,dt.
+\end{equation*}
+La continuidad de \(t\mapsto e^\top\nabla^2F(u+te)e\) y la primera desigualdad en (5.1.6) implican que, para \(h>0\) suficientemente pequeño,
+\begin{align*}
+    F(u+he)
+    &>
+    F(u)+h\langle\nabla F(u),e\rangle
+    +
+    L\int_0^h(h-t)\,dt\\
+    &=
+    F(u)+\langle\nabla F(u),he\rangle
+    +
+    \frac{L}{2}\|he\|^2.
+\end{align*}
+Por tanto, (5.1.4a) no se cumple. El segundo caso en (5.1.6) conduce de manera similar a una violación de (5.1.4b).
+
+\textbf{Paso 2.} Supongamos ahora que \(F\in C^1\) y que (5.1.4) se cumple. Sea \(\rho\in C^\infty_c(\mathbb{R}^n)\) no negativa y con soporte compacto, tal que \(\int_{\mathbb{R}^n}\rho(x)\,dx=1\), una llamada función de mollificación, véase por ejemplo (8.1.3). Para \(\varepsilon>0\), sea \(\rho_\varepsilon(x):=\varepsilon^{-n}\rho(x/\varepsilon)\). Es un resultado estándar, por ejemplo \cite[Apéndice C.5]{evans-2010}, que la convolución \(F_\varepsilon:=F*\rho_\varepsilon\in C^\infty(\mathbb{R}^n)\) satisface
+\begin{equation*}
+    \lim_{\varepsilon\to 0}\nabla F_\varepsilon(v)
+    =
+    \nabla F(v)
+    \qquad
+    \text{para todo } v\in\mathbb{R}^n.
+    \tag{5.1.7}
+\end{equation*}
+Fijemos \(\varepsilon>0\). Por (5.1.4), para todo \(v,w\in\mathbb{R}^n\),
+\begin{align*}
+    F_\varepsilon(v)
+    &=
+    \int_{\mathbb{R}^n}
+    F(v-x)\rho_\varepsilon(x)\,dx\\
+    &\leq
+    \int_{\mathbb{R}^n}
+    F(w-x)\rho_\varepsilon(x)
+    +
+    \langle\nabla F(w-x)\rho_\varepsilon(x),v-w\rangle
+    +
+    \frac{L}{2}\|w-v\|^2\rho_\varepsilon(x)\,dx\\
+    &=
+    F_\varepsilon(w)
+    +
+    \langle\nabla F_\varepsilon(w),v-w\rangle
+    +
+    \frac{L}{2}\|w-v\|^2,
+\end{align*}
+donde usamos que \(\nabla F_\varepsilon=\nabla F*\rho_\varepsilon\). Por tanto, \(F_\varepsilon\) satisface (5.1.4a), y de manera similar se muestra que \(F_\varepsilon\) satisface (5.1.4b). Por el Paso 1, \(F_\varepsilon\in C^\infty\) satisface (5.1.5). Finalmente, haciendo \(\varepsilon\to 0\) en (5.1.7) se implica que \(F\) también satisface (5.1.5). \(\square\)
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sea \(n\in\mathbb{N}\). Una función \(F:\mathbb{R}^n\to\mathbb{R}\) se llama \textbf{convexa} si y solo si
+\begin{equation*}
+    F(\lambda w+(1-\lambda)v)
+    \leq
+    \lambda F(w)+(1-\lambda)F(v)
+    \tag{5.1.8}
+\end{equation*}
+para todo \(w,v\in\mathbb{R}^n\), \(\lambda\in(0,1)\).
+\end{definicion}
+\end{tcolorbox}
+
+En caso de que \(F\) sea continuamente diferenciable, esto es equivalente a la propiedad geométrica (ii), como muestra el siguiente lema. La demostración se deja como Ejercicio 10.18.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{lema}
+Sea \(F\in C^1(\mathbb{R}^n)\). Entonces \(F\) es convexa si y solo si
+\begin{equation*}
+    F(v)
+    \geq
+    F(w)+\langle\nabla F(w),v-w\rangle
+    \qquad
+    \text{para todo } w,v\in\mathbb{R}^n.
+    \tag{5.1.9}
+\end{equation*}
+\end{lema}
+\end{tcolorbox}
+
+El concepto de convexidad se fortalece mediante la llamada fuerte convexidad, que requiere un término cuadrático positivo adicional en el lado derecho de (5.1.9), y por tanto corresponde a la propiedad geométrica (iii) por definición.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{definicion}
+Sean \(n\in\mathbb{N}\) y \(\mu>0\). Una función diferenciable \(F:\mathbb{R}^n\to\mathbb{R}\) se llama \textbf{\(\mu\)-fuertemente convexa} si
+\begin{equation*}
+    F(v)
+    \geq
+    F(w)+\langle\nabla F(w),v-w\rangle
+    +
+    \frac{\mu}{2}\|v-w\|^2
+    \qquad
+    \text{para todo } w,v\in\mathbb{R}^n.
+    \tag{5.1.10}
+\end{equation*}
+\end{definicion}
+\end{tcolorbox}
+
+Una función convexa no tiene por qué estar acotada inferiormente, por ejemplo \(w\mapsto w\), y por tanto no tiene por qué tener minimizadores globales. E incluso si está acotada inferiormente, no necesariamente existen minimizadores, por ejemplo \(w\mapsto \exp(w)\). Sin embargo, tenemos el siguiente enunciado.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{lema}
+Sea \(F:\mathbb{R}^n\to\mathbb{R}\). Si \(F\) es
+
+\begin{enumerate}
+    \item[(i)] convexa, entonces el conjunto de minimizadores de \(F\) es convexo y tiene cardinalidad \(0\), \(1\), o \(\infty\),
+
+    \item[(ii)] \(\mu\)-fuertemente convexa, entonces \(F\) tiene exactamente un minimizador.
+\end{enumerate}
+\end{lema}
+\end{tcolorbox}
+
+\textbf{Demostración.} Sea \(F\) convexa, y supongamos que \(w_*\) y \(v_*\) son dos minimizadores de \(F\). Entonces toda combinación convexa \(\lambda w_*+(1-\lambda)v_*\), \(\lambda\in[0,1]\), también es un minimizador por (5.1.8). Esto muestra la primera afirmación.
+
+Ahora sea \(F\) \(\mu\)-fuertemente convexa. Entonces (5.1.10) implica que \(F\) está acotada inferiormente por una función cuadrática convexa. Por tanto \(\lim_{\|w\|\to\infty}F(w)=\infty\). Luego existe una sucesión acotada \((w_j)_{j\in\mathbb{N}}\) con \(F(w_j)\to\inf_{w\in\mathbb{R}^n}F(w)>-\infty\). Además, para una subsucesión obtenemos \(w_{j_k}\to w_*\) cuando \(k\to\infty\). Puesto que \(F\) es continua, se cumple \(F(w_*)=\inf_{w\in\mathbb{R}^n}F(w)\). Como \(w_*\) es un minimizador y \(F\) es diferenciable, \(\nabla F(w_*)=0\). Por (5.1.10) tenemos \(F(v)>F(w_*)\) para todo \(v\neq w_*\). \(\square\)
+
+\subsection{Convergencia del descenso de gradiente}
+
+Como se anunció antes, para analizar convergencia, nos concentramos únicamente en objetivos \(\mu\)-fuertemente convexos y \(L\)-suaves; remitimos a la sección bibliográfica para lecturas adicionales bajo supuestos más débiles. El siguiente teorema, que establece convergencia lineal del descenso de gradiente, es un resultado estándar; véase, por ejemplo, \cite{nesterov-2018,beck-2017,bubeck-2015}. La demostración presentada aquí está tomada de \cite[Teorema 3.6]{garrigos-gower-2024}.
+
+Recordemos que se dice que una sucesión \((e_k)_{k\in\mathbb{N}}\) de números reales no negativos \textbf{converge linealmente} a \(0\), si y solo si existen constantes \(C>0\) y \(c\in[0,1)\) tales que
+\begin{equation*}
+    e_k\leq Cc^k
+    \qquad
+    \text{para todo } k\in\mathbb{N}_0.
+\end{equation*}
+La constante \(c\) también se denomina la \textbf{tasa de convergencia}. Antes de dar el enunciado, primero notamos que comparar (5.1.4a) y (5.1.10) necesariamente da \(L\geq \mu\), y por tanto \(\kappa:=L/\mu\geq 1\). Este término, conocido como el \textbf{número de condición} de \(F\), determina la tasa de convergencia.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{teorema}
+Sean \(n\in\mathbb{N}\) y \(L\geq \mu>0\). Sea \(F:\mathbb{R}^n\to\mathbb{R}\) \(L\)-suave y \(\mu\)-fuertemente convexa. Además, sea \(h_k=h\in(0,1/L]\) para todo \(k\in\mathbb{N}_0\), sea \((w_k)_{k=0}^{\infty}\subseteq\mathbb{R}^n\) definida por (5.1.2), y sea \(w_*\) el minimizador único de \(F\).
+
+Entonces, \(F(w_k)\to F(w_*)\) y \(w_k\to w_*\) convergen linealmente cuando \(k\to\infty\). Para la elección específica \(h=1/L\), se cumple para todo \(k\in\mathbb{N}\)
+\begin{equation*}
+    \|w_k-w_*\|^2
+    \leq
+    \left(1-\frac{\mu}{L}\right)^k
+    \|w_0-w_*\|^2,
+    \tag{5.1.11a}
+\end{equation*}
+\begin{equation*}
+    F(w_k)-F(w_*)
+    \leq
+    \frac{L}{2}
+    \left(1-\frac{\mu}{L}\right)^k
+    \|w_0-w_*\|^2.
+    \tag{5.1.11b}
+\end{equation*}
+\end{teorema}
+\end{tcolorbox}
+
+\textbf{Demostración.} Basta mostrar (5.1.11a), puesto que (5.1.11b) se sigue directamente de (5.1.11a) y (5.1.4a), porque \(\nabla F(w_*)=0\). El caso \(k=0\) es trivial, así que sea \(k\in\mathbb{N}\).
+
+Expandiendo \(w_k=w_{k-1}-h\nabla F(w_{k-1})\) y usando \(\mu\)-fuerte convexidad (5.1.10),
+\begin{align*}
+    \|w_k-w_*\|^2
+    &=
+    \|w_{k-1}-w_*\|^2
+    -
+    2h\langle\nabla F(w_{k-1}),w_{k-1}-w_*\rangle
+    +
+    h^2\|\nabla F(w_{k-1})\|^2\\
+    &\leq
+    (1-\mu h)\|w_{k-1}-w_*\|^2
+    -
+    2h(F(w_{k-1})-F(w_*))
+    +
+    h^2\|\nabla F(w_{k-1})\|^2.
+    \tag{5.1.12}
+\end{align*}
+Para acotar la suma de los dos últimos términos, primero usamos (5.1.4a) para obtener
+\begin{align*}
+    F(w_k)
+    &\leq
+    F(w_{k-1})
+    +
+    \langle\nabla F(w_{k-1}),-h\nabla F(w_{k-1})\rangle
+    +
+    \frac{L}{2}\|h\nabla F(w_{k-1})\|^2\\
+    &=
+    F(w_{k-1})
+    +
+    \left(\frac{L}{2}-\frac{1}{h}\right)
+    h^2\|\nabla F(w_{k-1})\|^2.
+\end{align*}
+Por tanto, para \(h<2/L\),
+\begin{equation*}
+    h^2\|\nabla F(w_{k-1})\|^2
+    \leq
+    \frac{1}{1/h-L/2}
+    \bigl(F(w_{k-1})-F(w_k)\bigr)
+    \leq
+    \frac{1}{1/h-L/2}
+    \bigl(F(w_{k-1})-F(w_*)\bigr),
+\end{equation*}
+y por consiguiente
+\begin{equation*}
+    -2h\bigl(F(w_{k-1})-F(w_*)\bigr)
+    +
+    h^2\|\nabla F(w_{k-1})\|^2
+    \leq
+    \left(
+        -2h+\frac{1}{1/h-L/2}
+    \right)
+    \bigl(F(w_{k-1})-F(w_*)\bigr).
+\end{equation*}
+Si \(2h\geq 1/(1/h-L/2)\), lo cual es equivalente a \(h\leq 1/L\), entonces el último término es menor o igual a cero. Por tanto, (5.1.12) implica para \(h\leq 1/L\)
+\begin{equation*}
+    \|w_k-w_*\|^2
+    \leq
+    (1-\mu h)\|w_{k-1}-w_*\|^2
+    \leq
+    \cdots
+    \leq
+    (1-\mu h)^k\|w_0-w_*\|^2.
+\end{equation*}
+Esto concluye la demostración. \(\square\)
+
+\begin{observacion}[funciones objetivo convexas]
+Sea \(F:\mathbb{R}^n\to\mathbb{R}\) convexa y \(L\)-suave con un minimizador en \(w_*\). Como se muestra en el Lema 5.1.6, el minimizador no tiene por qué ser único, así que no podemos esperar \(w_k\to w_*\) en general. Sin embargo, los valores objetivo todavía convergen. Específicamente, bajo estos supuestos, el siguiente resultado se cumple \cite[Teorema 2.1.14, Corolario 2.1.2]{nesterov-2018}. Si \(h_k=h\in(0,2/L)\) para todo \(k\in\mathbb{N}_0\) y \((w_k)_{k=0}^{\infty}\subseteq\mathbb{R}^n\) es generado por (5.1.2), entonces
+\end{observacion}
+\begin{equation*}
+    F(w_k)-F(w_*)=O(k^{-1})
+    \qquad
+    \text{cuando } k\to\infty.
+\end{equation*}
+
+\section{Descenso de gradiente estocástico}
+
+A continuación discutimos una variante estocástica del descenso de gradiente. La idea, que originalmente se remonta a Robbins y Monro \cite{robbins-monro-1951}, es reemplazar el gradiente \(\nabla F(w_k)\) en (5.1.2) por una variable aleatoria que denotamos por \(G_k\). Interpretamos \(G_k\) como una aproximación a \(\nabla F(w_k)\). Más precisamente, a lo largo de todo el texto asumimos que, dado \(w_k\), \(G_k\) es un estimador insesgado de \(\nabla F(w_k)\), condicionalmente independiente de \(w_0,\ldots,w_{k-1}\), véase el Apéndice A.3.3, de modo que
+\begin{equation*}
+    \mathbb{E}[G_k\mid w_k]
+    \equiv
+    \mathbb{E}[G_k\mid w_k,\ldots,w_0]
+    =
+    \nabla F(w_k).
+    \tag{5.2.1}
+\end{equation*}
+Después de escoger algún valor inicial \(w_0\in\mathbb{R}^n\), la regla de actualización se convierte en
+\begin{equation*}
+    w_{k+1}:=w_k-h_kG_k,
+    \tag{5.2.2}
+\end{equation*}
+donde \(h_k>0\) denota de nuevo el tamaño de paso. A diferencia de la Sección 5.1, nos concentramos en tamaños de paso \(h_k\) dependientes de \(k\).
+
+Sea \(w_k\) generado por (5.2.2). Usando \(L\)-suavidad (5.1.5), tenemos entonces \cite[Lema 4.2]{bottou-curtis-nocedal-2018}
+\begin{align*}
+    \mathbb{E}[F(w_{k+1})\mid w_k]-F(w_k)
+    &\leq
+    \mathbb{E}[
+        \langle\nabla F(w_k),w_{k+1}-w_k\rangle
+        \mid w_k
+    ]
+    +
+    \frac{L}{2}\mathbb{E}[
+        \|w_{k+1}-w_k\|^2
+        \mid w_k
+    ]\\
+    &=
+    -h_k\|\nabla F(w_k)\|^2
+    +
+    \frac{L}{2}\mathbb{E}[\|h_kG_k\|^2\mid w_k].
+\end{align*}
+Para que la función objetivo disminuya en esperanza, el primer término \(h_k\|\nabla F(w_k)\|^2\) debe dominar el segundo término \(\frac{L}{2}\mathbb{E}[\|h_kG_k\|^2\mid w_k]\). Como \(w_k\) se aproxima al mínimo, tenemos \(\|\nabla F(w_k)\|\to0\), lo cual sugiere que \(\mathbb{E}[\|h_kG_k\|^2\mid w_k]\) también debería disminuir con el tiempo.
+
+Considérese, como ilustración, el descenso de gradiente estocástico (SGD) con una \textit{tasa de aprendizaje constante}, \(h_k=h\), sobre una función objetivo cuadrática y con ruido de gradiente tal que \(\mathbb{E}[\|G_k\|^2\mid w_k]\) no tiende a cero. Las actualizaciones estocásticas en (5.2.2) causan fluctuaciones en la trayectoria de optimización. Puesto que estas fluctuaciones no disminuyen a medida que el algoritmo se aproxima al mínimo, los iterados no convergerán. En cambio, se estabilizan dentro de una vecindad del mínimo, y oscilan alrededor de él, por ejemplo \cite[Teorema 9.8]{garrigos-gower-2024}. En la práctica, esto podría producir una buena aproximación a \(w_*\). Sin embargo, para alcanzar convergencia en el límite, la varianza del vector de actualización, \(-h_kG_k\), debe disminuir con el tiempo. Esto puede lograrse ya sea reduciendo la varianza de \(G_k\), por ejemplo mediante mini-lotes más grandes, cf. Ejemplo 5.2.1, o, más comúnmente, disminuyendo el tamaño de paso \(h_k\) a medida que \(k\) progresa, por ejemplo con \(h_k\sim 1/k\).
+
+\subsection{Motivación y tasas de aprendizaje decrecientes}
+
+El siguiente ejemplo motiva el algoritmo en el contexto estándar, por ejemplo \cite[Capítulo 8]{goodfellow-bengio-courville-2016} o \cite[Sección 8.4]{murphy-2022}.
+
+\begin{ejemplo}[minimización del riesgo empírico]
+Supongamos que tenemos una muestra de datos \(S:=(x_j,y_j)_{j=1}^{m}\), donde \(y_j\in\mathbb{R}\) es la etiqueta correspondiente al punto de datos \(x_j\in\mathbb{R}^d\). Usando la pérdida cuadrática, queremos ajustar una red neuronal \(\Phi(\cdot,w):\mathbb{R}^d\to\mathbb{R}\), que depende de parámetros, es decir, pesos y sesgos \(w\in\mathbb{R}^n\), de tal manera que el riesgo empírico
+\begin{equation*}
+    F(w)
+    :=
+    \frac{1}{m}
+    \sum_{j=1}^{m}
+    \bigl(\Phi(x_j,w)-y_j\bigr)^2
+\end{equation*}
+sea minimizado. Realizar un paso de descenso de gradiente requiere computar
+\begin{equation*}
+    \nabla F(w)
+    =
+    \frac{2}{m}
+    \sum_{j=1}^{m}
+    \bigl(\Phi(x_j,w)-y_j\bigr)
+    \nabla_w\Phi(x_j,w),
+    \tag{5.2.3}
+\end{equation*}
+y por tanto computar \(m\) gradientes de la red neuronal \(\Phi\). Para \(m\) grande, en la práctica \(m\) puede estar en los millones o incluso ser mayor, este cómputo podría ser inviable.
+\end{ejemplo}
+
+Para reducir el costo computacional, reemplazamos el gradiente completo (5.2.3) por el gradiente estocástico
+\begin{equation*}
+    G
+    :=
+    2\bigl(\Phi(x_j,w)-y_j\bigr)
+    \nabla_w\Phi(x_j,w),
+\end{equation*}
+donde \(j\sim \operatorname{uniform}(1,\ldots,m)\) es una variable aleatoria con distribución uniforme sobre el conjunto discreto \(\{1,\ldots,m\}\). Entonces
+\begin{equation*}
+    \mathbb{E}[G]
+    =
+    \frac{2}{m}
+    \sum_{j=1}^{m}
+    \bigl(\Phi(x_j,w)-y_j\bigr)
+    \nabla_w\Phi(x_j,w)
+    =
+    \nabla F(w),
+\end{equation*}
+lo que significa que \(G\) es un estimador insesgado de \(\nabla F(w)\). Es importante notar que computar una realización de \(G\) solamente requiere una única evaluación del gradiente de la red neuronal.
+
+Más generalmente, se pueden escoger \textbf{mini-lotes}\footnote{En contraste con usar el lote completo, que corresponde al descenso de gradiente estándar.} de tamaño \(m_b\), donde \(m_b\ll m\), y sea
+\begin{equation*}
+    G
+    =
+    \frac{2}{m_b}
+    \sum_{j\in J}
+    \bigl(\Phi(x_j,w)-y_j\bigr)
+    \nabla_w\Phi(x_j,w),
+\end{equation*}
+donde \(J\) es un subconjunto aleatorio de \(\{1,\ldots,m\}\) de cardinalidad \(m_b\). Un tamaño de mini-lote grande reduce la varianza de \(G\), haciendo que sea un estimador más robusto del gradiente verdadero, pero incrementa el costo computacional.
+
+Una variante común relacionada es la siguiente. Sea \(m_bk=m\) para \(m_b,k,m\in\mathbb{N}\), es decir, el número de puntos de datos \(m\) es un múltiplo \(k\)-ésimo del tamaño de mini-lote \(m_b\). En cada \textbf{época}, primero se determina una partición aleatoria \(\dot{\bigcup}_{i=1}^{k}J_i=\{1,\ldots,m\}\), con \(|J_i|=m_b\), para cada \(i\). Entonces, para cada \(i=1,\ldots,k\), los pesos se actualizan con la estimación del gradiente
+\begin{equation*}
+    \frac{2}{m_b}
+    \sum_{j\in J_i}
+    \bigl(\Phi(x_j,w)-y_j\bigr)
+    \nabla_w\Phi(x_j,w).
+\end{equation*}
+Por tanto, en una época, correspondiente a \(k\) actualizaciones de los pesos, el algoritmo recorre todo el conjunto de datos, y cada punto de datos se usa exactamente una vez.
+
+\subsection{Convergencia del descenso de gradiente estocástico}
+
+Como \(w_k\) en (5.2.2) es una variable aleatoria por construcción, un enunciado de convergencia solo puede ser estocástico, por ejemplo, en esperanza o con alta probabilidad. El siguiente teorema, que se basa en \cite[Teorema 3.2]{gower-loizou-2019} y \cite[Teorema 4.7]{bottou-curtis-nocedal-2018}, se concentra en el primer caso. El resultado se enuncia bajo el supuesto (5.2.6), que acota los segundos momentos de los gradientes estocásticos \(G_k\), y asegura que crecen a lo sumo linealmente con \(\|\nabla F(w_k)\|^2\). Además, el análisis se apoya en los siguientes tamaños de paso decrecientes
+\begin{equation*}
+    h_k
+    :=
+    \min\left(
+        \frac{\mu}{L^2\gamma},
+        \frac{1}{\mu}
+        \frac{(k+1)^2-k^2}{(k+1)^2}
+    \right)
+    \qquad
+    \text{para todo } k\in\mathbb{N}_0,
+    \tag{5.2.4}
+\end{equation*}
+de \cite{gower-loizou-2019}. Nótese que \(h_k=O(k^{-1})\) cuando \(k\to\infty\), pues
+\begin{equation*}
+    \frac{(k+1)^2-k^2}{(k+1)^2}
+    =
+    \frac{2k+1}{(k+1)^2}
+    =
+    \frac{2}{k+1}
+    +
+    O(k^{-2}).
+    \tag{5.2.5}
+\end{equation*}
+Esta disminución de la tasa de aprendizaje nos permitirá establecer una tasa de convergencia. Sin embargo, en la práctica, podrían preferirse métodos menos agresivos de decaimiento o heurísticos que disminuyan la tasa de aprendizaje con base en el comportamiento de convergencia observado.
+
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{teorema}
+Sean \(n\in\mathbb{N}\) y \(L,\mu,\gamma>0\). Sea \(F:\mathbb{R}^n\to\mathbb{R}\) \(L\)-suave y \(\mu\)-fuertemente convexa. Fijemos \(w_0\in\mathbb{R}^n\), sea \((h_k)_{k=0}^{\infty}\) como en (5.2.4), y sean \((G_k)_{k=0}^{\infty}\), \((w_k)_{k=1}^{\infty}\) sucesiones de variables aleatorias como en (5.2.1) y (5.2.2). Supongamos que, para algún \(\gamma>0\) fijo, y todo \(k\in\mathbb{N}_0\),
+\begin{equation*}
+    \mathbb{E}[\|G_k\|^2\mid w_k]
+    \leq
+    \gamma(1+\|\nabla F(w_k)\|^2).
+    \tag{5.2.6}
+\end{equation*}
+Entonces existe una constante \(C=C(w_0,\gamma,\mu,L)\) tal que para todo \(k\in\mathbb{N}\)
+\begin{equation*}
+    \mathbb{E}[\|w_k-w_*\|^2]
+    \leq
+    \frac{C}{k},
+\end{equation*}
+\begin{equation*}
+    \mathbb{E}[F(w_k)]-F(w_*)
+    \leq
+    \frac{C}{k}.
+\end{equation*}
+\end{teorema}
+\end{tcolorbox}
+
+\textbf{Demostración.} Usando (5.2.1) y (5.2.6), se cumple para \(k\geq 1\)
+\begin{align*}
+    \mathbb{E}[\|w_k-w_*\|^2\mid w_{k-1}]
+    &=
+    \|w_{k-1}-w_*\|^2
+    -
+    2h_{k-1}\mathbb{E}[
+        \langle G_{k-1},w_{k-1}-w_*\rangle
+        \mid w_{k-1}
+    ]\\
+    &\qquad
+    +
+    h_{k-1}^2
+    \mathbb{E}[\|G_{k-1}\|^2\mid w_{k-1}]\\
+    &\leq
+    \|w_{k-1}-w_*\|^2
+    -
+    2h_{k-1}
+    \langle\nabla F(w_{k-1}),w_{k-1}-w_*\rangle\\
+    &\qquad
+    +
+    h_{k-1}^2\gamma
+    (1+\|\nabla F(w_{k-1})\|^2).
+\end{align*}
+Por \(\mu\)-fuerte convexidad (5.1.10),
+\begin{equation*}
+    -2h_{k-1}
+    \langle\nabla F(w_{k-1}),w_{k-1}-w_*\rangle
+    \leq
+    -\mu h_{k-1}\|w_{k-1}-w_*\|^2
+    -
+    2h_{k-1}(F(w_{k-1})-F(w_*)).
+\end{equation*}
+Además, \(L\)-suavidad, \(\mu\)-fuerte convexidad y \(\nabla F(w_*)=0\) implican
+\begin{equation*}
+    \|\nabla F(w_{k-1})\|^2
+    \leq
+    L^2\|w_{k-1}-w_*\|^2
+    \leq
+    \frac{2L^2}{\mu}(F(w_{k-1})-F(w_*)).
+\end{equation*}
+Combinando las estimaciones anteriores obtenemos
+\begin{align*}
+    \mathbb{E}[\|w_k-w_*\|^2\mid w_{k-1}]
+    &\leq
+    (1-\mu h_{k-1})\|w_{k-1}-w_*\|^2
+    +
+    h_{k-1}^2\gamma\\
+    &\qquad
+    +
+    2h_{k-1}
+    \left(
+        \frac{L^2\gamma}{\mu}h_{k-1}-1
+    \right)
+    (F(w_{k-1})-F(w_*)).
+\end{align*}
+La elección de \(h_{k-1}\leq\mu/(L^2\gamma)\) da además
+\begin{equation*}
+    \mathbb{E}[\|w_k-w_*\|^2\mid w_{k-1}]
+    \leq
+    (1-\mu h_{k-1})\|w_{k-1}-w_*\|^2
+    +
+    h_{k-1}^2\gamma.
+\end{equation*}
+Nótese que ambos lados son todavía variables aleatorias. Tomando la esperanza total, y usando la \textbf{propiedad de torre}, por ejemplo \cite[Satze 8.1.4]{klenke-2014}, obtenemos
+\begin{equation*}
+    \mathbb{E}[\|w_k-w_*\|^2]
+    \leq
+    (1-\mu h_{k-1})\mathbb{E}[\|w_{k-1}-w_*\|^2]
+    +
+    h_{k-1}^2\gamma.
+\end{equation*}
+Con \(e_0:=\|w_0-w_*\|^2\) y \(e_k:=\mathbb{E}[\|w_k-w_*\|^2]\) para \(k\geq1\), hemos encontrado
+\begin{align*}
+    e_k
+    &\leq
+    (1-\mu h_{k-1})e_{k-1}
+    +
+    h_{k-1}^2\gamma\\
+    &\leq
+    (1-\mu h_{k-1})
+    \bigl((1-\mu h_{k-2})e_{k-2}+h_{k-2}^2\gamma\bigr)
+    +
+    h_{k-1}^2\gamma\\
+    &\leq
+    \cdots
+    \leq
+    e_0\prod_{j=0}^{k-1}(1-\mu h_j)
+    +
+    \gamma
+    \sum_{j=0}^{k-1}
+    h_j^2
+    \prod_{i=j+1}^{k-1}(1-\mu h_i).
+\end{align*}
+Nótese que existe \(k_0\in\mathbb{N}\) tal que por (5.2.4) y (5.2.5)
+\begin{equation*}
+    h_i
+    =
+    \frac{1}{\mu}
+    \frac{(i+1)^2-i^2}{(i+1)^2}
+    \qquad
+    \text{para todo } i\geq k_0.
+\end{equation*}
+Por tanto existe \(\widetilde{C}\), que depende de \(\gamma,\mu,L\), pero es independiente de \(k\), tal que
+\begin{equation*}
+    \prod_{i=j}^{k-1}(1-\mu h_i)
+    \leq
+    \widetilde{C}
+    \prod_{i=j}^{k-1}
+    \frac{i^2}{(i+1)^2}
+    =
+    \widetilde{C}\frac{j^2}{k^2}
+    \qquad
+    \text{para todo } 1\leq j\leq k,
+\end{equation*}
+y además
+\begin{equation*}
+    \prod_{i=0}^{k-1}(1-\mu h_i)
+    \leq
+    \frac{\widetilde{C}}{k^2}.
+\end{equation*}
+Así,
+\begin{align*}
+    \mathbb{E}[\|w_k-w_*\|^2]
+    =
+    e_k
+    &\leq
+    e_0\frac{\widetilde{C}}{k^2}
+    +
+    \widetilde{C}\gamma
+    \sum_{j=0}^{k-1}
+    \frac{1}{\mu^2}
+    \left(
+        \frac{(j+1)^2-j^2}{(j+1)^2}
+    \right)^2
+    \frac{(j+1)^2}{k^2}\\
+    &\leq
+    \frac{\widetilde{C}}{k^2}e_0
+    +
+    \frac{\widetilde{C}\gamma}{\mu^2}
+    \frac{1}{k^2}
+    \sum_{j=0}^{k-1}
+    \underbrace{
+    \left(
+        \frac{2j+1}{j+1}
+    \right)^2
+    }_{\leq 4}\\
+    &\leq
+    \frac{\widetilde{C}}{k^2}e_0
+    +
+    \frac{\widetilde{C}\gamma}{\mu^2}
+    \frac{4k}{k^2}
+    \leq
+    \frac{C}{k},
+\end{align*}
+para alguna \(C=C(w_0,\gamma,\mu,L)\).
+
+Finalmente, usando \(L\)-suavidad,
+\begin{equation*}
+    F(w_k)-F(w_*)
+    \leq
+    \langle\nabla F(w_*),w_k-w_*\rangle
+    +
+    \frac{L}{2}\|w_k-w_*\|^2
+    =
+    \frac{L}{2}\|w_k-w_*\|^2,
+\end{equation*}
+y tomando esperanza se concluye la demostración. \(\square\)
+
+La elección específica de \(h_k\) en (5.2.4) simplifica los cálculos en la demostración, pero no es necesaria para que se cumpla la convergencia asintótica. Clásicamente, la convergencia de SGD puede mostrarse bajo supuestos similares a los anteriores para tamaños de paso positivos que satisfacen \(\sum_{k\in\mathbb{N}}h_k=\infty\) y \(\sum_{k\in\mathbb{N}}h_k^2<\infty\); véase por ejemplo \cite[Sección 4]{bottou-curtis-nocedal-2018}, \cite[Capítulo 4]{bubeck-2015}, o \cite{robbins-monro-1951} para la referencia original.
+
+
+\section{Tasas de aprendizaje adaptativas y por coordenadas}
+
+En años recientes, se ha propuesto y estudiado una multitud de métodos de primer orden, es decir, de descenso de gradiente, para el entrenamiento de redes neuronales. Muchos de ellos incorporan algunas o todas las siguientes estrategias clave: gradientes estocásticos y tamaños de paso adaptativos. El concepto de gradientes estocásticos ya ha sido cubierto en la Sección 5.2, y ahora nos concentramos en tasas de aprendizaje adaptativas. Específicamente, siguiendo los artículos originales \cite{duchi-hazan-singer-2011,kingma-ba-2015,tieleman-hinton-2012,hinton-srivastava-swersky-2012} y en particular los resúmenes \cite{goodfellow-bengio-courville-2016,ruder-2016}, \cite[Capítulo 11]{aggarwal-2018}, \cite[Capítulo 11]{goodfellow-bengio-courville-2016}, y \cite[Sección 8.4]{murphy-2022}, explicamos las ideas principales detrás de AdaGrad, RMSProp y Adam. Las referencias anteriores proporcionan una visión general intuitiva que cubre varias variantes adicionales que se omiten aquí. Además, en la práctica, también se usan varias otras técnicas y heurísticas, como normalización por lotes, recorte de gradiente, regularización y abandono, inicializaciones de pesos específicas, etc. No las discutimos aquí, y remitimos por ejemplo a \cite{bengio-2012,goodfellow-bengio-courville-2016,lecun-bottou-orr-mueller-2002,murphy-2022}.
+
+\subsection{Escalamiento por coordenadas}
+
+El descenso de gradiente plano puede ser ineficiente para funciones objetivo mal condicionadas, en el sentido de que el número de condición \(\kappa=L/\mu\) controla la tasa de convergencia (cf.\ Teorema 5.1.7). Este problema puede ser particularmente pronunciado en problemas de optimización de alta dimensión, como cuando se entrenan redes neuronales, donde ciertos parámetros influyen la salida de la red mucho más que otros. Como resultado, una sola tasa de aprendizaje puede ser subóptima; las direcciones en el espacio de parámetros con gradientes pequeños se actualizan demasiado lentamente, mientras que en direcciones con gradientes grandes el algoritmo podría sobrepasarse. Para abordar esto, un enfoque consiste en precondicionar el gradiente multiplicándolo por una matriz que tenga en cuenta la geometría del espacio de parámetros, por ejemplo \cite{amari-1998,martens-grosse-2015}. Una alternativa más simple y computacionalmente eficiente consiste en escalar cada componente del gradiente individualmente, de acuerdo con una cantidad diagonal de precondicionamiento. Esto permite diferentes tasas de aprendizaje para diferentes coordenadas y puede ayudar a mitigar el mal condicionamiento, pero únicamente si este mal condicionamiento está alineado con los ejes coordenados. La pregunta clave es cómo escoger las tasas de aprendizaje. La idea principal, propuesta primero en \cite{duchi-hazan-singer-2011}, consiste en escalar cada componente de manera inversamente proporcional a la magnitud de gradientes pasados. En palabras de los autores de \cite{duchi-hazan-singer-2011}: ``Nuestros procedimientos dan actualizaciones frecuentes acompañadas de tasas de aprendizaje muy bajas y características poco frecuentes tasas de aprendizaje altas.''
+
+Después de inicializar \(u_0=0\in\mathbb{R}^n\), \(s_0=0\in\mathbb{R}^n\), y \(w_0\in\mathbb{R}^n\), todos los métodos discutidos abajo son casos especiales de
+\begin{align*}
+    u_{k+1}
+    &=
+    \beta_1u_k+\beta_2\nabla F(w_k),
+    \tag{5.3.1a}\\
+    s_{k+1}
+    &=
+    \gamma_1s_k+\gamma_2\nabla F(w_k)\odot\nabla F(w_k),
+    \tag{5.3.1b}\\
+    w_{k+1}
+    &=
+    w_k-\alpha_k u_{k+1}\oslash\sqrt{s_{k+1}+\varepsilon},
+    \tag{5.3.1c}
+\end{align*}
+para \(k\in\mathbb{N}_0\), y ciertos hiperparámetros \(\alpha_k,\beta_1,\beta_2,\gamma_1,\gamma_2\) y \(\varepsilon\). Aquí \(\odot\) y \(\oslash\) denotan la multiplicación y división componente a componente, respectivamente, y \(\sqrt{s_{k+1}+\varepsilon}\) se entiende componente a componente con \(\varepsilon>0\) pequeño, para evitar división por cero en (5.3.1c). Usualmente, los métodos de tipo momentum se obtienen aplicando mini-lotes, véase la Sección 5.2. Por simplicidad los presentamos con gradientes completos.
+
+\begin{ejemplo}
+Consideremos una función objetivo \(F:\mathbb{R}^n\to\mathbb{R}\), y su versión reescalada
+\begin{equation*}
+    F_\xi(w):=F(w\odot \xi),
+    \qquad
+    \text{con gradiente }
+    \nabla F_\xi(w)=\xi\odot\nabla F(w\odot \xi),
+\end{equation*}
+para algún \(\xi\in(0,\infty)^n\). El descenso de gradiente (5.1.2) aplicado a \(F_\xi\) realiza la actualización
+\begin{equation*}
+    w_{k+1}
+    =
+    w_k-h_k\xi\odot\nabla F(w\odot \xi).
+\end{equation*}
+Poniendo \(\varepsilon=0\), (5.3.1), por otro lado, realiza la actualización
+\begin{equation*}
+    w_{k+1}
+    =
+    w_k-\alpha_k
+    \left(
+        \beta_2
+        \sum_{j=0}^{k}
+        \gamma_1^j\nabla F(w_{k-j}\odot \xi)
+        \odot \xi
+    \right)
+    \oslash
+    \sqrt{
+        \gamma_2
+        \sum_{j=0}^{k}
+        \gamma_1^j
+        \nabla F(w_{k-j}\odot \xi)
+        \odot
+        \nabla F(w_{k-j}\odot \xi)
+        \odot \xi
+        \odot \xi
+    }.
+\end{equation*}
+Nótese cómo el factor de escalamiento exterior \(\xi\) ha desaparecido debido a la división, haciendo en este sentido que la actualización sea invariante respecto a un reescalamiento componente a componente del objetivo.
+\end{ejemplo}
+
+\subsection{Algoritmos}
+
+\textbf{AdaGrad}
+
+AdaGrad \cite{duchi-hazan-singer-2011}, que significa Adaptive Gradient Algorithm, corresponde a (5.3.1) con
+\begin{equation*}
+    \beta_1=0,
+    \qquad
+    \gamma_1=\beta_2=\gamma_2=1,
+    \qquad
+    \alpha_k=\alpha
+    \quad
+    \text{para todo } k\in\mathbb{N}_0.
+\end{equation*}
+Esto deja los hiperparámetros \(\varepsilon>0\) y \(\alpha>0\). Aquí \(\alpha>0\) puede entenderse como una tasa de aprendizaje ``global''. Los valores por defecto en TensorFlow \cite{kushner-yin-2003} son \(\alpha=0.001\) y \(\varepsilon=10^{-7}\). La actualización de AdaGrad se lee entonces
+\begin{equation*}
+    s_{k+1}=s_k+\nabla F(w_k)\odot\nabla F(w_k),
+    \qquad
+    w_{k+1}=w_k-\alpha\nabla F(w_k)\oslash\sqrt{s_{k+1}+\varepsilon}.
+\end{equation*}
+Debido a
+\begin{equation*}
+    s_{k+1}
+    =
+    \sum_{j=0}^{k}
+    \nabla F(w_j)\odot\nabla F(w_j),
+    \tag{5.3.2}
+\end{equation*}
+el algoritmo escala, por tanto, el gradiente \(\nabla F(w_k)\) en la actualización componente a componente por el inverso de la raíz cuadrada de la suma de todos los gradientes cuadrados pasados más \(\varepsilon\). Nótese que el factor de escalamiento \((s_{k+1,i}+\varepsilon)^{-1/2}\) para la componente \(i\) será grande si los gradientes previos para esa componente fueron pequeños, y viceversa.
+
+\textbf{RMSProp}
+
+RMSProp, que significa Root Mean Squared Propagation, fue introducido por Tieleman y Hinton \cite{tieleman-hinton-2012}. Corresponde a (5.3.1) con
+\begin{equation*}
+    \beta_1=0,
+    \qquad
+    \beta_2=1,
+    \qquad
+    \gamma_2=1-\gamma_1\in(0,1),
+    \qquad
+    \alpha_k=\alpha
+    \quad
+    \text{para todo } k\in\mathbb{N}_0,
+\end{equation*}
+lo que deja efectivamente los hiperparámetros \(\varepsilon>0\), \(\gamma_1\in(0,1)\) y \(\alpha>0\). Los valores por defecto en TensorFlow \cite{kushner-yin-2003} son \(\varepsilon=10^{-7}\), \(\alpha=0.001\) y \(\gamma_1=0.9\). El algoritmo está dado entonces por
+\begin{align*}
+    s_{k+1}
+    &=
+    \gamma_1s_k+(1-\gamma_1)\nabla F(w_k)\odot\nabla F(w_k),
+    \tag{5.3.3a}\\
+    w_{k+1}
+    &=
+    w_k-\alpha\nabla F(w_k)\oslash\sqrt{s_{k+1}+\varepsilon}.
+    \tag{5.3.3b}
+\end{align*}
+El vector de escalamiento puede expresarse como
+\begin{equation*}
+    s_{k+1}
+    =
+    (1-\gamma_1)
+    \sum_{j=0}^{k}
+    \gamma_1^j
+    \nabla F(w_{k-j})\odot\nabla F(w_{k-j}),
+\end{equation*}
+y corresponde a una media móvil ponderada exponencialmente sobre los gradientes cuadrados pasados. A diferencia de AdaGrad (5.3.2), donde los gradientes pasados se acumulan indefinidamente, RMSProp descuenta exponencialmente los gradientes antiguos, dando más peso a las actualizaciones recientes. Esto evita el decaimiento excesivamente rápido de las tasas de aprendizaje y permite que la convergencia a veces observada en AdaGrad, por ejemplo \cite{mcmahan-streeter-2010,goodfellow-bengio-courville-2016}, se mantenga. Los autores de Adam \cite{kingma-ba-2015} propusieron usar como alternativa una media móvil escalada, que promedia sobre los últimos \(m\) gradientes cuadrados, para algún \(m\in\mathbb{N}\) fijo. Para más detalles sobre Adadelta, véase \cite{kingma-ba-2015,aggarwal-2018}. El algoritmo estándar de RMSProp no incorpora momentum, aunque esta posibilidad ya se menciona en \cite{tieleman-hinton-2012}; véase también \cite{graves-2013}.
+
+\textbf{Adam}
+
+Adam \cite{hinton-srivastava-swersky-2012}, que significa Adaptive Moment Estimation, corresponde a (5.3.1) con
+\begin{equation*}
+    \beta_2=1-\beta_1\in(0,1),
+    \qquad
+    \gamma_2=1-\gamma_1\in(0,1),
+    \qquad
+    \alpha_k
+    =
+    \alpha
+    \frac{\sqrt{1-\gamma_1^{k+1}}}{1-\beta_1^{k+1}},
+\end{equation*}
+para todo \(k\in\mathbb{N}_0\), para algún \(\alpha>0\). Los valores por defecto para los parámetros restantes recomendados en \cite{hinton-srivastava-swersky-2012} son \(\varepsilon=10^{-8}\), \(\alpha=0.001\), \(\beta_1=0.9\) y \(\gamma_1=0.999\). La actualización puede formularse como
+\begin{align*}
+    u_{k+1}
+    &=
+    \beta_1u_k+(1-\beta_1)\nabla F(w_k),
+    &
+    \widehat{u}_{k+1}
+    &=
+    \frac{u_{k+1}}{1-\beta_1^{k+1}},
+    \tag{5.3.4a}\\
+    s_{k+1}
+    &=
+    \gamma_1s_k+(1-\gamma_1)\nabla F(w_k)\odot\nabla F(w_k),
+    &
+    \widehat{s}_{k+1}
+    &=
+    \frac{s_{k+1}}{1-\gamma_1^{k+1}},
+    \tag{5.3.4b}\\
+    w_{k+1}
+    &=
+    w_k-\alpha\widehat{u}_{k+1}\oslash\sqrt{\widehat{s}_{k+1}+\varepsilon}.
+    \tag{5.3.4c}
+\end{align*}
+Comparado con RMSProp, Adam introduce dos modificaciones. Primero, debido a \(\beta_1>0\),
+\begin{equation*}
+    u_{k+1}
+    =
+    (1-\beta_1)
+    \sum_{j=0}^{k}
+    \beta_1^j\nabla F(w_{k-j}),
+\end{equation*}
+lo cual corresponde a un esquema de momentum (promedio móvil exponencial de los gradientes). Segundo, para contrarrestar el sesgo de inicialización proveniente de \(u_0=0\) y \(s_0=0\), Adam aplica una corrección de sesgo vía
+\begin{equation*}
+    \widehat{u}_k
+    =
+    \frac{u_k}{1-\beta_1^k},
+    \qquad
+    \widehat{s}_k
+    =
+    \frac{s_k}{1-\gamma_1^k}.
+\end{equation*}
+
+Debe notarse que existen configuraciones específicas y problemas de optimización convexa para los cuales Adam y RMSProp y Adadelta no necesariamente convergen a un minimizador, véase \cite{reddi-kale-kumar-2018}. Los autores de \cite{reddi-kale-kumar-2018} proponen una modificación denominada AMSGrad, que evita este problema. No obstante, Adam sigue siendo un algoritmo muy popular para el entrenamiento de redes neuronales. También nótese que, en el contexto de optimización estocástica, las demostraciones de convergencia para tales algoritmos en general todavía requieren una disminución dependiente de \(k\) de la tasa de aprendizaje ``global'', como \(\alpha=O(k^{-1/2})\) en (5.3.3b) y (5.3.4c).
+
+\textbf{AdamW}
+
+Una variante especialmente importante de Adam es \textbf{AdamW}, propuesta en \cite{loshchilov-hutter-2019}, y ampliamente usada en el entrenamiento moderno de redes neuronales, en particular en modelos de lenguaje. La idea central de AdamW es desacoplar el \textbf{decaimiento de pesos} del término de gradiente adaptativo de Adam.
+
+Recordemos primero la regularización usual por norma cuadrática. Si queremos minimizar una función objetivo \(F\), una forma clásica de penalizar pesos grandes consiste en considerar
+\begin{equation*}
+    F_\lambda(w)
+    :=
+    F(w)+\frac{\lambda}{2}\|w\|^2,
+\end{equation*}
+donde \(\lambda>0\) es un parámetro de regularización. Entonces
+\begin{equation*}
+    \nabla F_\lambda(w)
+    =
+    \nabla F(w)+\lambda w.
+\end{equation*}
+En descenso de gradiente estándar, aplicar el método a \(F_\lambda\) produce la actualización
+\begin{equation*}
+    w_{k+1}
+    =
+    w_k-\alpha_k(\nabla F(w_k)+\lambda w_k)
+    =
+    (1-\alpha_k\lambda)w_k-\alpha_k\nabla F(w_k).
+\end{equation*}
+Por tanto, en descenso de gradiente ordinario, añadir una penalización cuadrática al objetivo es equivalente a aplicar un decaimiento multiplicativo a los pesos en cada iteración.
+
+Sin embargo, esta equivalencia deja de ser válida para métodos adaptativos como Adam. En Adam, el gradiente se reescala componente a componente mediante una estimación de segundos momentos. Si se reemplaza \(\nabla F(w_k)\) por \(\nabla F(w_k)+\lambda w_k\), entonces el término de regularización también queda mezclado dentro de las estimaciones adaptativas \(u_k\) y \(s_k\). En otras palabras, el término \(\lambda w_k\) no actúa simplemente como un decaimiento uniforme de pesos, sino que es transformado por el precondicionamiento diagonal del algoritmo.
+
+AdamW corrige esto desacoplando el decaimiento de pesos del gradiente usado para construir los momentos. Con la misma notación de Adam, primero se calculan los momentos usando únicamente el gradiente de la función objetivo no regularizada:
+\begin{align*}
+    u_{k+1}
+    &=
+    \beta_1u_k+(1-\beta_1)\nabla F(w_k),
+    \\
+    s_{k+1}
+    &=
+    \gamma_1s_k+(1-\gamma_1)\nabla F(w_k)\odot\nabla F(w_k).
+\end{align*}
+Después se aplican las correcciones de sesgo
+\begin{equation*}
+    \widehat{u}_{k+1}
+    =
+    \frac{u_{k+1}}{1-\beta_1^{k+1}},
+    \qquad
+    \widehat{s}_{k+1}
+    =
+    \frac{s_{k+1}}{1-\gamma_1^{k+1}},
+\end{equation*}
+y la actualización de AdamW toma la forma
+\begin{equation*}
+    w_{k+1}
+    =
+    w_k
+    -
+    \alpha_k
+    \widehat{u}_{k+1}
+    \oslash
+    \sqrt{\widehat{s}_{k+1}+\varepsilon}
+    -
+    \alpha_k\lambda w_k.
+    \tag{5.3.5}
+\end{equation*}
+Equivalentemente,
+\begin{equation*}
+    w_{k+1}
+    =
+    (1-\alpha_k\lambda)w_k
+    -
+    \alpha_k
+    \widehat{u}_{k+1}
+    \oslash
+    \sqrt{\widehat{s}_{k+1}+\varepsilon}.
+\end{equation*}
+Así, el término \(-\alpha_k\lambda w_k\) produce un decaimiento directo de los pesos, mientras que el término adaptativo se calcula solamente a partir de \(\nabla F(w_k)\).
+
+Esta diferencia es conceptualmente importante. En Adam con regularización \(L^2\) acoplada, el gradiente usado por el optimizador sería
+\begin{equation*}
+    \nabla F(w_k)+\lambda w_k,
+\end{equation*}
+y por tanto el decaimiento de pesos quedaría afectado por el reescalamiento adaptativo. En AdamW, en cambio, la regularización se implementa directamente como un decaimiento de los parámetros, separado de las estadísticas de primer y segundo momento. Por eso se dice que AdamW usa \textbf{decaimiento de pesos desacoplado}.
+
+En la práctica, si \(g_k=\nabla F(w_k)\), AdamW puede escribirse como
+\begin{align*}
+    u_{k+1}
+    &=
+    \beta_1u_k+(1-\beta_1)g_k,
+    \\
+    s_{k+1}
+    &=
+    \gamma_1s_k+(1-\gamma_1)g_k\odot g_k,
+    \\
+    \widehat{u}_{k+1}
+    &=
+    \frac{u_{k+1}}{1-\beta_1^{k+1}},
+    \qquad
+    \widehat{s}_{k+1}
+    =
+    \frac{s_{k+1}}{1-\gamma_1^{k+1}},
+    \\
+    w_{k+1}
+    &=
+    (1-\alpha_k\lambda)w_k
+    -
+    \alpha_k
+    \widehat{u}_{k+1}
+    \oslash
+    \sqrt{\widehat{s}_{k+1}+\varepsilon}.
+    \tag{5.3.6}
+\end{align*}
+Aquí \(\alpha_k>0\) es la tasa de aprendizaje, \(\lambda\geq0\) es el coeficiente de decaimiento de pesos, \(\beta_1,\gamma_1\in(0,1)\) controlan las medias móviles exponenciales, y \(\varepsilon>0\) se introduce para estabilidad numérica.
+
+En implementaciones modernas, el nombre \texttt{weight\_decay} suele referirse precisamente al parámetro \(\lambda\) de AdamW. Por ejemplo, si en un código de entrenamiento se usa un optimizador de la forma
+\begin{equation*}
+    \texttt{AdamW}(\texttt{params},\ \texttt{lr}=\alpha,\ \texttt{betas}=(\beta_1,\gamma_1),\ \texttt{eps}=\varepsilon,\ \texttt{weight\_decay}=\lambda),
+\end{equation*}
+entonces \(\texttt{lr}\) corresponde a \(\alpha\), \(\texttt{betas}\) corresponde a \((\beta_1,\gamma_1)\), \(\texttt{eps}\) corresponde a \(\varepsilon\), y \(\texttt{weight\_decay}\) corresponde a \(\lambda\).
+
+La razón por la cual AdamW es especialmente popular en redes neuronales profundas es que combina las ventajas prácticas de Adam —escalamiento adaptativo por coordenadas y momentum— con un decaimiento de pesos más fiel a la intuición geométrica de la regularización. En particular, evita que el término de penalización \(\lambda w_k\) sea distorsionado por las estimaciones adaptativas de segundo momento. Por esta razón, AdamW es una elección estándar en muchos entrenamientos modernos de arquitecturas tipo Transformer.
+
+\section{Retropropagación}
+
+En esta sección discutimos cómo aplicar métodos basados en gradiente al entrenamiento de redes neuronales feedforward. Sea \(\Phi(\cdot,w)\) una red neuronal feedforward de la clase \(\mathcal{N}_\sigma(d_0,\ldots,d_{L+1})\) introducida en el Capítulo 3, y supongamos que la función de activación satisface \(\sigma\in C^1(\mathbb{R})\). Como antes, denotamos los parámetros de la red neuronal por
+\begin{equation*}
+    w=
+    \bigl((W^{(0)},b^{(0)}),\ldots,(W^{(L)},b^{(L)})\bigr),
+    \tag{5.4.1}
+\end{equation*}
+con matrices de pesos \(W^{(\ell)}\in\mathbb{R}^{d_{\ell+1}\times d_\ell}\) y vectores de sesgo \(b^{(\ell)}\in\mathbb{R}^{d_{\ell+1}}\). Adicionalmente, fijamos una función de pérdida diferenciable \(\mathcal{L}:\mathbb{R}^{d_{L+1}}\times\mathbb{R}^{d_{L+1}}\to\mathbb{R}\), por ejemplo, \(\mathcal{L}(y,\widehat{y})=\|y-\widehat{y}\|^2/2\), y asumimos datos dados \((x_j,y_j)_{j=1}^{m}\subseteq\mathbb{R}^{d_0}\times\mathbb{R}^{d_{L+1}}\). El objetivo es minimizar un riesgo empírico de la forma
+\begin{equation*}
+    F(w)
+    :=
+    \frac{1}{m}
+    \sum_{j=1}^{m}
+    \mathcal{L}(\Phi(x_j,w),y_j)
+    \tag{5.4.2}
+\end{equation*}
+como función de los parámetros \(w\) de la red neuronal. Una aplicación del paso de gradiente (5.1.2) para actualizar los parámetros requiere computar
+\begin{equation*}
+    \nabla F(w)
+    =
+    \frac{1}{m}
+    \sum_{j=1}^{m}
+    \nabla_w\mathcal{L}(\Phi(x_j,w),y_j).
+\end{equation*}
+Para métodos estocásticos, como se explicó en el Ejemplo 5.2.1, solo computamos el promedio sobre un sublote aleatorio del conjunto de datos. En cualquiera de los dos casos, necesitamos un algoritmo para determinar \(\nabla_w\mathcal{L}(\Phi(x,w),y)\), es decir, los gradientes
+\begin{equation*}
+    \nabla_{b^{(\ell)}}\mathcal{L}(\Phi(x,w),y)\in\mathbb{R}^{d_{\ell+1}},
+    \qquad
+    \nabla_{W^{(\ell)}}\mathcal{L}(\Phi(x,w),y)\in\mathbb{R}^{d_{\ell+1}\times d_\ell}
+    \tag{5.4.3}
+\end{equation*}
+para todo \(\ell=0,\ldots,L\). El algoritmo de retropropagación \cite{rumelhart-hinton-williams-1986} proporciona una manera eficiente de hacerlo.
+
+\subsection{Idea básica}
+
+Debido a la estructura composicional de las capas en una red neuronal, la función objetivo en (5.4.2) es una composición repetida de aplicaciones. El cómputo de sus derivadas requiere aplicación repetida de la regla de la cadena. Una implementación directa de esto es ineficiente debido a la aparición de cálculos redundantes. La complejidad puede reducirse significativamente almacenando y reutilizando ciertos valores intermedios. En esta sección primero mostramos esto en un contexto univariado simplificado.
+
+\textbf{Uso eficiente de la regla de la cadena}
+
+Sean \(f_\ell:\mathbb{R}\to\mathbb{R}\) funciones diferenciables para \(\ell=1,\ldots,L+1\). Queremos computar la derivada de
+\begin{equation*}
+    f_{L+1}\circ\cdots\circ f_1.
+\end{equation*}
+Para \(w\in\mathbb{R}\), denotemos
+\begin{equation*}
+    \overline{f}^{(1)}:=f_1(w)
+    \qquad
+    \text{y}
+    \qquad
+    \overline{f}^{(\ell)}:=f_\ell(\overline{f}^{(\ell-1)})
+    \quad
+    \text{para } \ell=2,\ldots,L+1,
+\end{equation*}
+de modo que \(\overline{f}^{(L+1)}=f_{L+1}\circ\cdots\circ f_1(w)\). Por la regla de la cadena, para todo \(w\in\mathbb{R}\),
+\begin{equation*}
+    (f_{L+1}\circ\cdots\circ f_1)'(w)
+    =
+    f_1'(w)
+    \cdot
+    \prod_{\ell=2}^{L+1}
+    f_\ell'((f_{\ell-1}\circ\cdots\circ f_1)(w))
+    =
+    \frac{\partial\overline{f}^{(L+1)}}{\partial w}.
+\end{equation*}
+Si consideramos cada evaluación de \(f_\ell\) y \(f_\ell'\) como una operación, entonces una implementación ingenua de esta fórmula requiere \(O(L^2)\) operaciones. Si en cambio primero computamos iterativamente y almacenamos los valores \(\overline{f}^{(\ell)}\) para \(\ell=1,\ldots,L\), entonces el cómputo se reduce a \(O(L)\) operaciones.
+
+\textbf{Pase hacia adelante y pase hacia atrás}
+
+Para redes neuronales la situación es ligeramente más complicada, pues cada capa de la red corresponde a una función que depende de la salida de la capa anterior y de sus propios parámetros. Consideramos de nuevo esto en un contexto simplificado, y suponemos que \(f_1:\mathbb{R}\to\mathbb{R}\) y \(f_\ell:\mathbb{R}\times\mathbb{R}\to\mathbb{R}\) son diferenciables para \(\ell=2,\ldots,L+1\). Con
+\begin{equation*}
+    \overline{f}^{(1)}:=f_1(w^{(0)})
+    \qquad
+    \text{y}
+    \qquad
+    \overline{f}^{(\ell)}
+    :=
+    f_\ell(w^{(\ell-1)},\overline{f}^{(\ell-1)})
+    \quad
+    \text{para } \ell=2,\ldots,L+1,
+\end{equation*}
+nuestro objetivo es computar las \(L+1\) derivadas parciales
+\begin{equation*}
+    \frac{\partial\overline{f}^{(L+1)}}{\partial w^{(0)}},
+    \ldots,
+    \frac{\partial\overline{f}^{(L+1)}}{\partial w^{(L)}}.
+    \tag{5.4.4}
+\end{equation*}
+Aquí \(w^{(\ell)}\in\mathbb{R}\) puede interpretarse como el parámetro de la \(\ell\)-ésima capa. La aplicación repetida de la regla de la cadena da, para \(\ell=0,\ldots,L\),
+\begin{equation*}
+    \frac{\partial\overline{f}^{(L+1)}}{\partial w^{(\ell)}}
+    =
+    \frac{\partial f_{\ell+1}}{\partial w^{(\ell)}}
+    \prod_{k=\ell+1}^{L}
+    \underbrace{
+    \frac{\partial f_{k+1}}{\partial f^{(k)}}
+    }_{=:\alpha^{(k+1)}},
+\end{equation*}
+donde usamos que \(\overline{f}^{(k)}\) solo depende de \(w^{(\ell)}\) si \(k>\ell\). Nótese que
+\begin{equation*}
+    \alpha^{(\ell)}
+    =
+    \frac{\partial\overline{f}^{(L+1)}}{\partial\overline{f}^{(\ell)}}
+    =
+    \alpha^{(\ell+1)}
+    \frac{\partial f_{\ell+1}}{\partial\overline{f}^{(\ell)}}
+    \qquad
+    \text{para todo } \ell=1,\ldots,L+1.
+\end{equation*}
+Una manera eficiente, que requiere solo \(O(L)\) operaciones, de computar todas las derivadas en (5.4.4) consiste entonces en computar iterativamente las cantidades
+\begin{equation*}
+    \overline{f}^{(1)},\ldots,\overline{f}^{(L+1)}
+    \qquad
+    \text{y}
+    \qquad
+    \left(
+        \alpha^{(L+1)},
+        \frac{\partial\overline{f}^{(L+1)}}{\partial w^{(L)}}
+    \right),
+    \ldots,
+    \left(
+        \alpha^{(1)},
+        \frac{\partial\overline{f}^{(L+1)}}{\partial w^{(0)}}
+    \right)
+    \tag{5.4.5}
+\end{equation*}
+en este orden. El cómputo de \(\overline{f}^{(1)},\ldots,\overline{f}^{(L+1)}\) se denomina el pase hacia adelante, pues la información se pasa iterativamente a través de cada capa de composición. El cómputo de la segunda parte en (5.4.5), donde la información del gradiente se construye empezando desde la función/capa más externa, se llama el pase hacia atrás.
+
+\subsection{Redes neuronales feedforward}
+
+Ahora volvemos al contexto (5.4.1)--(5.4.2), y aplicamos las ideas de la Sección 5.4.1 al cómputo de los gradientes (5.4.3).
+
+Fijemos una entrada \(x\in\mathbb{R}^{d_0}\) e introduzcamos la notación
+\begin{align*}
+    \widetilde{x}^{(1)}
+    &:=
+    W^{(0)}x+b^{(0)},
+    \tag{5.4.6a}\\
+    \widetilde{x}^{(\ell+1)}
+    &:=
+    W^{(\ell)}\sigma(\widetilde{x}^{(\ell)})+b^{(\ell)}
+    \qquad
+    \text{para } \ell=1,\ldots,L,
+    \tag{5.4.6b}
+\end{align*}
+donde la aplicación de \(\sigma:\mathbb{R}\to\mathbb{R}\) a un vector es, como siempre, entendida componente a componente. En la notación de preactivaciones y activaciones introducida previamente, \(x^{(\ell)}=\sigma(\widetilde{x}^{(\ell)})\in\mathbb{R}^{d_\ell}\) para \(\ell=1,\ldots,L\), y \(\widetilde{x}^{(L+1)}=x^{(L+1)}=\Phi(x,w)\in\mathbb{R}^{d_{L+1}}\) es la salida de la red neuronal. Por tanto, los \(\widetilde{x}^{(\ell)}\) para \(\ell=1,\ldots,L\) a veces también se denominan las preactivaciones.
+
+En lo siguiente, adicionalmente fijamos \(y\in\mathbb{R}^{d_{L+1}}\) y escribimos
+\begin{equation*}
+    \mathcal{L}:=\mathcal{L}(\Phi(x,w),y)
+    =
+    \mathcal{L}(\widetilde{x}^{(L+1)},y).
+\end{equation*}
+Nótese que \(\widetilde{x}^{(k)}\) depende de \((W^{(\ell)},b^{(\ell)})\) solo si \(k>\ell\). Como \(\widetilde{x}^{(\ell+1)}\) es función de \(\widetilde{x}^{(\ell)}\) para cada \(\ell\), por aplicación repetida de la regla de la cadena
+\begin{equation*}
+    \frac{\partial\mathcal{L}}{\partial W_{ij}^{(\ell)}}
+    =
+    \frac{\partial\mathcal{L}}{\partial \widetilde{x}^{(L+1)}}
+    \frac{\partial \widetilde{x}^{(L+1)}}{\partial \widetilde{x}^{(L)}}
+    \cdots
+    \frac{\partial \widetilde{x}^{(\ell+2)}}{\partial \widetilde{x}^{(\ell+1)}}
+    \frac{\partial \widetilde{x}^{(\ell+1)}}{\partial W_{ij}^{(\ell)}}.
+    \tag{5.4.7}
+\end{equation*}
+Un cálculo análogo se cumple para \(\partial\mathcal{L}/\partial b_j^{(\ell)}\). Para evitar cálculos innecesarios, siguiendo la idea de la Sección 5.4.1, introducimos
+\begin{equation*}
+    \alpha^{(\ell)}
+    :=
+    \nabla_{\widetilde{x}^{(\ell)}}\mathcal{L}
+    \in\mathbb{R}^{d_\ell}
+    \qquad
+    \text{para todo } \ell=1,\ldots,L+1,
+    \tag{5.4.8}
+\end{equation*}
+y observamos que
+\begin{equation*}
+    \frac{\partial\mathcal{L}}{\partial W_{ij}^{(\ell)}}
+    =
+    (\alpha^{(\ell+1)})^\top
+    \frac{\partial \widetilde{x}^{(\ell+1)}}{\partial W_{ij}^{(\ell)}}.
+\end{equation*}
+Ahora formalizamos que \(\alpha^{(\ell)}\) puede computarse recursivamente para \(\ell=L+1,\ldots,1\). Esto explica el nombre ``retropropagación''. Como antes, \(\odot\) denota el producto componente a componente.
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{lema}
+Se cumple
+\begin{equation*}
+    \alpha^{(L+1)}
+    =
+    \nabla_{\widetilde{x}^{(L+1)}}\mathcal{L}(\widetilde{x}^{(L+1)},y)
+    \tag{5.4.9}
+\end{equation*}
+y
+\begin{equation*}
+    \alpha^{(\ell)}
+    =
+    \sigma'(\widetilde{x}^{(\ell)})
+    \odot
+    (W^{(\ell)})^\top\alpha^{(\ell+1)}
+    \qquad
+    \text{para todo } \ell=L,\ldots,1.
+    \tag{5.4.10}
+\end{equation*}
+\end{lema}
+\end{tcolorbox}
+
+\textbf{Demostración.} La ecuación (5.4.9) se cumple por definición. Para \(\ell\in\{1,\ldots,L\}\), por la regla de la cadena
+\begin{equation*}
+    \alpha^{(\ell)}
+    =
+    \frac{\partial\mathcal{L}}{\partial\widetilde{x}^{(\ell)}}
+    =
+    \left(
+        \frac{\partial\widetilde{x}^{(\ell+1)}}{\partial\widetilde{x}^{(\ell)}}
+    \right)^\top
+    \frac{\partial\mathcal{L}}{\partial\widetilde{x}^{(\ell+1)}}
+    =
+    \left(
+        \frac{\partial\widetilde{x}^{(\ell+1)}}{\partial\widetilde{x}^{(\ell)}}
+    \right)^\top
+    \alpha^{(\ell+1)}.
+\end{equation*}
+Por (5.4.6b), para \(i\in\{1,\ldots,d_{\ell+1}\}\), \(j\in\{1,\ldots,d_\ell\}\),
+\begin{equation*}
+    \left(
+        \frac{\partial\widetilde{x}^{(\ell+1)}}{\partial\widetilde{x}^{(\ell)}}
+    \right)_{ij}
+    =
+    \frac{\partial\widetilde{x}_i^{(\ell+1)}}{\partial\widetilde{x}_j^{(\ell)}}
+    =
+    W_{ij}^{(\ell)}\sigma'(\widetilde{x}_j^{(\ell)}).
+\end{equation*}
+Así se sigue la afirmación. \(\square\)
+
+Juntando todo, obtenemos fórmulas explícitas para (5.4.3).
+
+\begin{tcolorbox}[colback=blue!8, colframe=blue!8, boxrule=0pt]
+\begin{proposicion}
+Se cumple
+\begin{equation*}
+    \nabla_{b^{(\ell)}}\mathcal{L}
+    =
+    \alpha^{(\ell+1)}
+    \in\mathbb{R}^{d_{\ell+1}}
+    \qquad
+    \text{para } \ell=0,\ldots,L,
+\end{equation*}
+y
+\begin{equation*}
+    \nabla_{W^{(0)}}\mathcal{L}
+    =
+    \alpha^{(1)}x^\top
+    \in\mathbb{R}^{d_1\times d_0},
+\end{equation*}
+y
+\begin{equation*}
+    \nabla_{W^{(\ell)}}\mathcal{L}
+    =
+    \alpha^{(\ell+1)}
+    \sigma(\widetilde{x}^{(\ell)})^\top
+    \in\mathbb{R}^{d_{\ell+1}\times d_\ell}
+    \qquad
+    \text{para } \ell=1,\ldots,L.
+\end{equation*}
+\end{proposicion}
+\end{tcolorbox}
+
+\textbf{Demostración.} Por (5.4.6a), para \(i,k\in\{1,\ldots,d_1\}\), y \(j\in\{1,\ldots,d_0\}\),
+\begin{equation*}
+    \frac{\partial\widetilde{x}_k^{(1)}}{\partial b_i^{(0)}}
+    =
+    \delta_{ki}
+    \qquad
+    \text{y}
+    \qquad
+    \frac{\partial\widetilde{x}_k^{(1)}}{\partial W_{ij}^{(0)}}
+    =
+    \delta_{ki}x_j,
+\end{equation*}
+y por (5.4.6b), para \(\ell\in\{1,\ldots,L\}\) y \(i,k\in\{1,\ldots,d_{\ell+1}\}\), y \(j\in\{1,\ldots,d_\ell\}\),
+\begin{equation*}
+    \frac{\partial\widetilde{x}_k^{(\ell+1)}}{\partial b_i^{(\ell)}}
+    =
+    \delta_{ki}
+    \qquad
+    \text{y}
+    \qquad
+    \frac{\partial\widetilde{x}_k^{(\ell+1)}}{\partial W_{ij}^{(\ell)}}
+    =
+    \delta_{ki}\sigma(\widetilde{x}_j^{(\ell)}).
+\end{equation*}
+Así, con \(e_i=(\delta_{ki})_{k=1}^{d_{\ell+1}}\),
+\begin{equation*}
+    \frac{\partial\mathcal{L}}{\partial b_i^{(\ell)}}
+    =
+    \left(
+        \frac{\partial\widetilde{x}^{(\ell+1)}}{\partial b_i^{(\ell)}}
+    \right)^\top
+    \frac{\partial\mathcal{L}}{\partial\widetilde{x}^{(\ell+1)}}
+    =
+    e_i^\top\alpha^{(\ell+1)}
+    =
+    \alpha_i^{(\ell+1)}
+    \qquad
+    \text{para } \ell\in\{0,\ldots,L\},
+\end{equation*}
+y similarmente
+\begin{equation*}
+    \frac{\partial\mathcal{L}}{\partial W_{ij}^{(0)}}
+    =
+    \left(
+        \frac{\partial\widetilde{x}^{(1)}}{\partial W_{ij}^{(0)}}
+    \right)^\top
+    \alpha^{(1)}
+    =
+    x_je_i^\top\alpha^{(1)}
+    =
+    x_j\alpha_i^{(1)}
+\end{equation*}
+y
+\begin{equation*}
+    \frac{\partial\mathcal{L}}{\partial W_{ij}^{(\ell)}}
+    =
+    \sigma(\widetilde{x}_j^{(\ell)})
+    \alpha_i^{(\ell+1)}
+    \qquad
+    \text{para } \ell\in\{1,\ldots,L\}.
+\end{equation*}
+Esto concluye la demostración. \(\square\)
+
+El Lema 5.4.1 y la Proposición 5.4.2 motivan el Algoritmo 1, en el cual un pase hacia adelante computa \(\widetilde{x}^{(\ell)}\), \(\ell=1,\ldots,L+1\), seguido por un pase hacia atrás para determinar los \(\alpha^{(\ell)}\), \(\ell=L+1,\ldots,1\), y los gradientes de \(\mathcal{L}\) respecto de los parámetros de la red neuronal. Esto muestra cómo usar optimizadores basados en gradiente de las secciones anteriores para el entrenamiento de redes neuronales.
+
+Dos observaciones importantes están en orden. Primero, la función objetivo asociada con el entrenamiento de redes neuronales típicamente no es convexa como función de los pesos y sesgos de la red neuronal. Por tanto, los análisis de las secciones anteriores en general no serán directamente aplicables. Aun así, pueden dar intuición sobre el comportamiento de convergencia local alrededor de un minimizador local. Segundo, asumimos que la función de activación es continuamente diferenciable, lo cual no se cumple para ReLU. Usando el concepto de subgradientes, los algoritmos basados en gradientes y su análisis pueden generalizarse hasta cierto punto para acomodar también funciones objetivo no diferenciables.
+
+
+
+\bibliographystyle{plainnat}
+\bibliography{biblio}
+
+\end{document}
