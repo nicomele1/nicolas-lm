@@ -256,6 +256,9 @@ experiments/reports/*
 *.fdb_latexmk
 *.synctex.gz
 
+# Mathematical background notes kept local for now
+notes/mathematical_background.*
+
 # Videos
 videos/renders/*
 !videos/renders/.gitkeep
