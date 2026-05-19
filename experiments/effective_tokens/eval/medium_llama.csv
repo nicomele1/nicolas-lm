@@ -1,0 +1,2 @@
+model_name,checkpoint_path,vocab_size,train_tokens,val_tokens,test_tokens,block_size,embedding_dim,num_heads,num_layers,max_steps,batch_size,eval_iters,train_loss,val_loss,test_loss_mean,test_loss_sd,test_loss_se,test_loss_ci_low,test_loss_ci_high,test_ppl,generalization_gap
+llama,experiments/runs/effective_tokens/medium/llama/model.pt,94,800000,100000,100000,128,64,4,2,5000,32,100,1.3644788920879365,1.4553661286830901,1.4637979936599732,0.030807044298080056,0.0030807044298080057,1.4577598129775495,1.4698361743423969,4.322344630895844,0.09931910157203672

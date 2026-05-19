@@ -1,0 +1,2 @@
+model_name,checkpoint_path,vocab_size,train_tokens,val_tokens,test_tokens,block_size,embedding_dim,num_heads,num_layers,max_steps,batch_size,eval_iters,train_loss,val_loss,test_loss_mean,test_loss_sd,test_loss_se,test_loss_ci_low,test_loss_ci_high,test_ppl,generalization_gap
+transformer,experiments/runs/effective_tokens/medium/transformer/model.pt,94,800000,100000,100000,128,64,4,2,5000,32,100,1.7679353535175324,1.841342920064926,1.8355210328102112,0.02859747979416045,0.002859747979416045,1.8299159267705558,1.8411261388498665,6.268399336447817,0.06758567929267878
