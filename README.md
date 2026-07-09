@@ -5,8 +5,8 @@ controlled experiments, a paper, and a mathematical companion to study
 **corpus diversity and effective tokens** in character-level autoregressive
 language models.
 
-Interactive demo: deploy instructions in [`render.yaml`](render.yaml)
-(serves the four trained model checkpoints from the pilot experiment)
+Interactive demo: <https://nicolas-lm.onrender.com>
+(free tier — first request after inactivity takes ~30–60 s to cold-start)
 
 ---
 
@@ -101,7 +101,7 @@ pilot with one seed per configuration.
 - `run_effective_tokens.py` — full experiment pipeline (corpus preparation, training, evaluation, results CSV)
 - `summarize_results.py` — compact CSV and Markdown summaries from results
 - `build_corpora.py` — download and prepare Gutenberg corpora for the pilot experiment
-- `app.py` — Flask web interface serving the trained checkpoints (deployed on Railway)
+- `app.py` — Flask web interface serving the trained checkpoints (deployed on Render)
 
 ---
 
@@ -172,6 +172,7 @@ python scripts/run_effective_tokens.py \
   --model-name llama \
   --max-chars 1000000 \
   --max-steps 5000 \
+  --block-size 128 \
   --output experiments/results/effective_tokens.csv
 ```
 
