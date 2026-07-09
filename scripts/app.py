@@ -20,11 +20,13 @@ from nicolasm.tokenizer import CharTokenizer
 
 app = Flask(__name__)
 
+_ROOT = Path(__file__).parent.parent
+
 CHECKPOINTS = {
-    "LLaMA — Medium (Austen)":        "experiments/runs/effective_tokens/medium/llama/model.pt",
-    "LLaMA — High (10 autores)":      "experiments/runs/effective_tokens/high/llama/model.pt",
-    "Transformer — Medium (Austen)":  "experiments/runs/effective_tokens/medium/transformer/model.pt",
-    "Transformer — High (10 autores)":"experiments/runs/effective_tokens/high/transformer/model.pt",
+    "LLaMA — Medium (Austen)":        str(_ROOT / "experiments/runs/effective_tokens/medium/llama/model.pt"),
+    "LLaMA — High (10 autores)":      str(_ROOT / "experiments/runs/effective_tokens/high/llama/model.pt"),
+    "Transformer — Medium (Austen)":  str(_ROOT / "experiments/runs/effective_tokens/medium/transformer/model.pt"),
+    "Transformer — High (10 autores)":str(_ROOT / "experiments/runs/effective_tokens/high/transformer/model.pt"),
 }
 
 _cache: dict = {}
