@@ -259,6 +259,19 @@ experiments/reports/*
 # Mathematical background notes kept local for now
 notes/mathematical_background.*
 
+# Root-level LaTeX build artifacts (produced when compiling notes/main.tex from root)
+main.pdf
+main.aux
+main.log
+main.out
+main.fls
+main.fdb_latexmk
+main.synctex.gz
+
+# Untracked local work files
+notes/video.tex
+video/
+
 # Videos
 videos/renders/*
 !videos/renders/.gitkeep
