@@ -29,7 +29,20 @@ CHECKPOINTS = {
     "Transformer — High (10 autores)":str(_ROOT / "experiments/runs/effective_tokens/high/transformer/model.pt"),
 }
 
+import threading
+
 _cache: dict = {}
+
+
+def _preload_all() -> None:
+    for k in list(CHECKPOINTS.keys()):
+        try:
+            load_model(k)
+        except Exception:
+            pass
+
+
+threading.Thread(target=_preload_all, daemon=True).start()
 
 
 def load_model(key: str):
@@ -564,13 +577,5 @@ def weights_endpoint():
 
 if __name__ == "__main__":
     import os
-    print("Cargando modelos…")
-    for k in CHECKPOINTS:
-        try:
-            load_model(k)
-            print(f"  ✓ {k}")
-        except Exception as e:
-            print(f"  ✗ {k}: {e}")
     port = int(os.environ.get("PORT", 5000))
-    print(f"\nAbre http://localhost:{port}\n")
     app.run(debug=False, host="0.0.0.0", port=port)
