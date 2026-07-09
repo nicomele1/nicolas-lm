@@ -214,7 +214,7 @@ def make_diversity():
               y_ticks=[0, 2, 4, 6, 8],
               tick_fmt=lambda t: str(int(t)),
               title='Entropía por orden de n-grama',
-              y_label='Entropia (bits)',
+              y_label='Entropia (nats)',
               bw=18, bg=4, gg=18)
 
     # Panel derecho: Distinct-4 y Gzip ratio

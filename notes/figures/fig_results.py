@@ -23,14 +23,14 @@ ARCHS  = ['Transformer', 'LLaMA-style']
 x      = np.arange(len(ARCHS))
 
 # ── Datos ─────────────────────────────────────────────────────────────────────
-test_med  = [2.0744, 1.6651]
-test_high = [2.4824, 2.1373]
+test_med  = [1.8355, 1.4638]
+test_high = [1.9597, 1.7010]
 
-ppl_med   = [7.96,  5.29]
-ppl_high  = [11.97, 8.48]
+ppl_med   = [6.27, 4.32]
+ppl_high  = [7.10, 5.48]
 
-gap_med   = [-0.0322, 0.0410]
-gap_high  = [ 0.2471, 0.3652]
+gap_med   = [0.0676, 0.0993]
+gap_high  = [0.0398, 0.0742]
 
 fig, axes = plt.subplots(1, 3, figsize=(13.0, 4.2))
 fig.subplots_adjust(wspace=0.42)
@@ -63,7 +63,7 @@ b1 = ax.bar(x - WIDTH/2, test_med,  WIDTH, label='Medium',
             color=MEDIUM, alpha=ALPHA, edgecolor='white', linewidth=0.6, zorder=3)
 b2 = ax.bar(x + WIDTH/2, test_high, WIDTH, label='High',
             color=HIGH,   alpha=ALPHA, edgecolor='white', linewidth=0.6, zorder=3)
-ax.set_ylim(0, 3.05)
+ax.set_ylim(0, 2.5)
 ax.set_ylabel('Pérdida de test (entropía cruzada)', fontsize=9.5)
 ax.set_title('Pérdida de test', fontsize=11, pad=8)
 ax.legend(fontsize=9, framealpha=0.0)
@@ -77,7 +77,7 @@ b3 = ax.bar(x - WIDTH/2, ppl_med,  WIDTH, label='Medium',
             color=MEDIUM, alpha=ALPHA, edgecolor='white', linewidth=0.6, zorder=3)
 b4 = ax.bar(x + WIDTH/2, ppl_high, WIDTH, label='High',
             color=HIGH,   alpha=ALPHA, edgecolor='white', linewidth=0.6, zorder=3)
-ax.set_ylim(0, 14.5)
+ax.set_ylim(0, 9.0)
 ax.set_ylabel('Perplejidad', fontsize=9.5)
 ax.set_title('Perplejidad', fontsize=11, pad=8)
 ax.legend(fontsize=9, framealpha=0.0)
@@ -91,8 +91,7 @@ b5 = ax.bar(x - WIDTH/2, gap_med,  WIDTH, label='Medium',
             color=MEDIUM, alpha=ALPHA, edgecolor='white', linewidth=0.6, zorder=3)
 b6 = ax.bar(x + WIDTH/2, gap_high, WIDTH, label='High',
             color=HIGH,   alpha=ALPHA, edgecolor='white', linewidth=0.6, zorder=3)
-ax.axhline(0, color='#444444', linewidth=0.7, linestyle='-', zorder=2)
-ax.set_ylim(-0.16, 0.50)
+ax.set_ylim(0, 0.14)
 ax.set_ylabel('Gap = test loss $-$ train loss', fontsize=9.5)
 ax.set_title('Brecha de generalización', fontsize=11, pad=8)
 ax.legend(fontsize=9, framealpha=0.0)

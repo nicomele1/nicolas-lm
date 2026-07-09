@@ -23,8 +23,8 @@ fig.subplots_adjust(wspace=0.38)
 
 # ── Panel izquierdo: entropías ────────────────────────────────────────────────
 labels_ent = [r'$H_1$', r'$H_2$', r'$H_3$']
-med_ent    = [3.0441, 5.4235, 7.2420]
-high_ent   = [3.1991, 5.6971, 7.5956]
+med_ent    = [3.1008, 5.5460, 7.4058]
+high_ent   = [3.1308, 5.6084, 7.5880]
 x = np.arange(len(labels_ent))
 
 b1 = ax1.bar(x - WIDTH/2, med_ent,  WIDTH, label='Medium',
@@ -34,7 +34,7 @@ b2 = ax1.bar(x + WIDTH/2, high_ent, WIDTH, label='High',
 
 ax1.set_xticks(x)
 ax1.set_xticklabels(labels_ent, fontsize=12)
-ax1.set_ylabel('Entropía de $n$-gramas (bits)', fontsize=10)
+ax1.set_ylabel('Entropía de $n$-gramas (nats)', fontsize=10)
 ax1.set_title('Entropía por orden de $n$-grama', fontsize=11, pad=8)
 ax1.set_ylim(0, 9.0)
 ax1.tick_params(labelsize=9, length=3)
@@ -57,8 +57,8 @@ for bar in b2:
 
 # ── Panel derecho: Distinct-4 y Gzip ratio ────────────────────────────────────
 labels_rat = ['Distinct-4', 'Gzip ratio']
-med_rat    = [0.1649, 0.3778]
-high_rat   = [0.2303, 0.4190]
+med_rat    = [0.0378, 0.3579]
+high_rat   = [0.0592, 0.4066]
 x2 = np.arange(len(labels_rat))
 
 b3 = ax2.bar(x2 - WIDTH/2, med_rat,  WIDTH, label='Medium',
@@ -70,7 +70,7 @@ ax2.set_xticks(x2)
 ax2.set_xticklabels(labels_rat, fontsize=10.5)
 ax2.set_ylabel('Proporción', fontsize=10)
 ax2.set_title('Diversidad léxica y compresibilidad', fontsize=11, pad=8)
-ax2.set_ylim(0, 0.58)
+ax2.set_ylim(0, 0.52)
 ax2.tick_params(labelsize=9, length=3)
 ax2.spines['top'].set_visible(False)
 ax2.spines['right'].set_visible(False)
