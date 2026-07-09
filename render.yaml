@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: nicolas-lm
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && pip install -e .
+    startCommand: PYTHONPATH=src python scripts/app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"

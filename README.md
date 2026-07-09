@@ -5,7 +5,7 @@ controlled experiments, a paper, and a mathematical companion to study
 **corpus diversity and effective tokens** in character-level autoregressive
 language models.
 
-Interactive demo: <https://vigilant-joy-production-a301.up.railway.app>
+Interactive demo: deploy instructions in [`render.yaml`](render.yaml)
 (serves the four trained model checkpoints from the pilot experiment)
 
 ---
