@@ -29,18 +29,26 @@ Two corpora of 1,000,000 characters each — *Medium* (single author, Jane Auste
 and *High* (ten authors/genres, interleaved) — were trained on two architectures
 for 5,000 AdamW steps.
 
+**Key quantities.** Empirical $n$-gram entropy in nats:
+
+$$H_n(C) = -\sum_{g} \hat{p}(g) \log \hat{p}(g)$$
+
+Perplexity and generalization gap:
+
+$$\mathrm{PPL} = e^{\mathcal{L}_{\mathrm{test}}}, \qquad \Delta = \mathcal{L}_{\mathrm{test}} - \mathcal{L}_{\mathrm{train}}$$
+
 **Corpus diversity metrics**
 
-| Corpus | Vocab | H₃ (nats) | Distinct-4 | Gzip ratio |
-|--------|------:|----------:|-----------:|-----------:|
-| Medium | 94    | 7.4058    | 0.0378     | 0.3579     |
-| High   | 102   | 7.5880    | 0.0592     | 0.4066     |
+| Corpus | Vocab | $H_3$ (nats) | Distinct-4 | Gzip ratio |
+|--------|------:|-------------:|-----------:|-----------:|
+| Medium | 94    | 7.4058       | 0.0378     | 0.3579     |
+| High   | 102   | 7.5880       | 0.0592     | 0.4066     |
 
 **Test evaluation**
 (full results in [`experiments/results/effective_tokens_1M.csv`](experiments/results/effective_tokens_1M.csv))
 
-| Model | Corpus | Test loss | PPL | Gen. gap |
-|-------|--------|----------:|----:|---------:|
+| Model | Corpus | $\mathcal{L}_{\mathrm{test}}$ | PPL | $\Delta$ |
+|-------|--------|------------------------------:|----:|---------:|
 | Transformer | Medium | 1.8355 | 6.27 | 0.0676 |
 | Transformer | High   | 1.9597 | 7.10 | 0.0398 |
 | LLaMA-style | Medium | 1.4638 | 4.32 | 0.0993 |
@@ -87,9 +95,9 @@ pilot with one seed per configuration.
 - `SwiGLU`
 
 **Corpus metrics** (`src/nicolasm/corpus_stats.py`)
-- n-gram entropy H₁, H₂, H₃
+- $n$-gram entropy $H_1, H_2, H_3$
 - conditional bigram entropy
-- distinct-n ratio
+- distinct-$n$ ratio
 - gzip compression ratio
 - `corpus_summary` combining all of the above
 
@@ -204,12 +212,12 @@ The test suite covers tokenizer correctness, data splitting, corpus metric
 formulas, model shapes, error handling, and — in `tests/test_causal_properties.py`
 — three behavioral invariants:
 
-1. **Causal no-leakage**: logits at position t are identical when only tokens
-   at positions > t differ (Transformer and LLaMA-style).
+1. **Causal no-leakage**: logits at position $t$ are identical when only tokens
+   at positions $> t$ differ (Transformer and LLaMA-style).
 2. **Overfit smoke test**: loss decreases after 30 gradient steps on a fixed
    tiny batch.
 3. **RoPE norm preservation**: `apply_rope` preserves the Euclidean norm of
-   each rotated pair.
+   each rotated pair $\|(x_{2i}, x_{2i+1})\|$.
 
 ```bash
 pytest          # all tests; currently 88 tests pass
