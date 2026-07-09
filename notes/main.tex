@@ -354,7 +354,7 @@ El script \code{train.py} minimiza el riesgo empírico
 \cite{loshchilov-2019-adamw,kingma-2015-adam}, una variante de descenso
 estocástico por gradiente. El gradiente completo
 \(\nabla_w\widehat R_S(w_k)\) requiere recorrer todo el dataset, que
-es muy costoso; en cada paso se usa entonces un minibatch \(B_k\) de tamaño \(M=64\)
+es muy costoso; en cada paso se usa entonces un minibatch \(B_k\) de tamaño \(M=32\)
 y se computa \(g_k=\nabla_w\widehat R_{B_k}(w_k)\), un estimador
 insesgado del gradiente completo. La actualización extiende la de
 Petersen-Zech \cite[\S 10.4]{petersen-zech-2026-mathematical} con un
@@ -597,7 +597,7 @@ Cantidad & Valor \\
 \midrule
 Tokenización & nivel caracter \\
 Contexto \(B\) & 128 \\
-Batch size \(M\) & 64 \\
+Batch size \(M\) & 32 \\
 Dimensión \(d\) & 64 \\
 Capas/cabezas & 2 / 4 \\
 Optimizador & AdamW \\
