@@ -25,9 +25,11 @@ size.
 
 ## Pilot result
 
-Two corpora of 1,000,000 characters each — *Medium* (single author, Jane Austen)
-and *High* (ten authors/genres, interleaved) — were trained on two architectures
-for 5,000 AdamW steps.
+The stored pilot uses *Medium* (a 1,000,000-character single-author corpus) and
+*High* (a 999,998-character mixture of ten authors and genres). Each corpus was
+used to train two architectures for 5,000 AdamW steps. The two-character length
+difference is negligible numerically, but the archived run is not literally an
+equal-size comparison.
 
 **Key quantities.** Empirical $n$-gram entropy in nats:
 
@@ -55,16 +57,16 @@ $$\mathrm{PPL} = e^{\mathcal{L}_{\mathrm{test}}}, \qquad \Delta = \mathcal{L}_{\
 | LLaMA-style | High   | 1.7010 | 5.48 | 0.0742 |
 
 In this small-scale pilot, the higher-diversity corpus produced **higher test
-loss** in both architectures but **lower generalization gap**. Diversity appears
-to act as implicit regularization at this scale, reducing overfitting without
-reducing absolute risk. This does not establish a general claim; it is a single
-pilot with one seed per configuration.
+loss** in both architectures but a **smaller empirical test–train difference**.
+This does not establish that diversity acts as regularization: the comparison
+also changes domain, vocabulary size, character distribution, and parameter
+count, and it contains one training run per configuration.
 
 ---
 
 ## Paper and mathematical companion
 
-- **Paper** (Spanish): [`notes/main.tex`](notes/main.tex) · [`notes/main.pdf`](notes/main.pdf)
+- **Paper** (English): [`notes/main.tex`](notes/main.tex) · [`notes/main.pdf`](notes/main.pdf)
   — formalizes tokenization, autoregressive modeling, empirical risk, AdamW,
   causal attention, RMSNorm, RoPE, and SwiGLU; reports the pilot results above.
 - **Mathematical companion**: [`notes/mathematical_background.tex`](notes/mathematical_background.tex) · [`notes/mathematical_background.pdf`](notes/mathematical_background.pdf)
@@ -101,6 +103,12 @@ pilot with one seed per configuration.
 - gzip compression ratio
 - `corpus_summary` combining all of the above
 
+**Evaluation and reproducibility**
+- Deterministic training and evaluation seeds, recorded in new artifacts
+- Bits per character and add-one unigram held-out baseline
+- Absolute and relative contextual gain over the unigram baseline
+- Parameter-count and processed-token accounting
+
 **Scripts** (`scripts/`)
 - `train.py` — train any of the three models on a text corpus
 - `evaluate.py` — compute test loss, perplexity, and generalization gap from a checkpoint
@@ -132,8 +140,10 @@ docs/                Protocol documentation and literature notes
 Requires Python 3.10+.
 
 ```bash
-python -m pip install -r requirements.txt
-python -m pip install -e .
+python -m pip install -e ".[test]"
+
+# Include the optional web demo dependencies:
+python -m pip install -e ".[test,web]"
 ```
 
 ---
@@ -178,7 +188,7 @@ python scripts/run_effective_tokens.py \
   --input data/corpora/corpus_high.txt   --name high \
   --model-name transformer \
   --model-name llama \
-  --max-chars 1000000 \
+  --truncate-to-min-chars \
   --max-steps 5000 \
   --block-size 128 \
   --output experiments/results/effective_tokens.csv
@@ -202,7 +212,10 @@ are committed under `experiments/effective_tokens/corpora/`.
 To reproduce from scratch, download the corpora with `scripts/build_corpora.py`
 and run `scripts/run_effective_tokens.py` with the same hyperparameters.
 Results will differ from the paper due to random seed variation with a single
-run; the paper reports one seed per configuration.
+run; the paper reports one seed per configuration. New runs default to seed
+`1337`; pass `--seed N` to both the standalone scripts and the full pipeline to
+reproduce or deliberately vary a run. The seed is stored in every new training
+checkpoint and evaluation CSV.
 
 ---
 
@@ -220,7 +233,7 @@ formulas, model shapes, error handling, and — in `tests/test_causal_properties
    each rotated pair $\|(x_{2i}, x_{2i+1})\|$.
 
 ```bash
-pytest          # all tests; currently 88 tests pass
+pytest          # all tests; currently 97 tests pass
 pytest -v       # verbose output per test
 ```
 
@@ -229,7 +242,8 @@ pytest -v       # verbose output per test
 ## Limitations
 
 - Character-level tokenization only; BPE/subword experiments not included.
-- Small-scale experiments (1 million characters, ≤ 5,000 training steps).
+- Small-scale experiments (approximately 1 million characters and at most
+  5,000 training steps).
 - Single seed per configuration; reported numbers are one realization, not an
   average over runs.
 - The generalization gap intervals are descriptive (overlapping character
@@ -247,13 +261,13 @@ pytest -v       # verbose output per test
 - Corpus diversity metrics
 - Experiment runner with fixed-budget comparison protocol
 - Flask web demo
-- 88-test suite including causal correctness checks
+- Reproducible seeds and difficulty-adjusted evaluation metrics
+- 97-test suite including causal correctness checks
 - GitHub Actions CI
 
 **Future work**
 - Multiple seeds per configuration
-- Bigram baseline in the effective-tokens pipeline
 - Low-diversity corpus condition
 - BPE/subword tokenization comparison
 - Larger compute budget and corpus sizes
-- Formal reproducibility packaging (locked dependencies, deterministic seeds)
+- Locked dependency resolution for byte-for-byte environment reconstruction

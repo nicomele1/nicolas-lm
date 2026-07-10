@@ -1,104 +1,55 @@
-"""
-Figura 2: Resultados del experimento piloto (tres paneles).
-Panel 1 — Pérdida de test.
-Panel 2 — Perplejidad.
-Panel 3 — Brecha de generalización (gap = test loss − train loss).
-Estilo: serif/CM, paleta teal–magenta, spines limpios.
-"""
+"""Generate non-redundant model-result panels from the versioned CSV."""
 
-import numpy as np
+from __future__ import annotations
+
+import csv
+from pathlib import Path
+
 import matplotlib.pyplot as plt
-from matplotlib import rcParams
 
-rcParams['font.family']      = 'serif'
-rcParams['mathtext.fontset'] = 'cm'
-rcParams['axes.linewidth']   = 0.8
 
-MEDIUM = '#1FB6B6'   # teal
-HIGH   = '#C9189E'   # magenta
-WIDTH  = 0.32
-ALPHA  = 0.88
+ROOT = Path(__file__).resolve().parents[2]
+RESULTS = ROOT / "experiments/results/effective_tokens_1M.csv"
+OUTPUT = Path(__file__).with_suffix(".pdf")
+MODELS = ("transformer", "llama")
+LABELS = {"transformer": "Transformer", "llama": "LLaMA-style"}
+COLORS = {"medium": "#315b7d", "high": "#a23b4a"}
 
-ARCHS  = ['Transformer', 'LLaMA-style']
-x      = np.arange(len(ARCHS))
 
-# ── Datos ─────────────────────────────────────────────────────────────────────
-test_med  = [1.8355, 1.4638]
-test_high = [1.9597, 1.7010]
+def indexed_rows() -> dict[tuple[str, str], dict[str, str]]:
+    with RESULTS.open(encoding="utf-8", newline="") as handle:
+        return {(row["model_name"], row["corpus_name"]): row for row in csv.DictReader(handle)}
 
-ppl_med   = [6.27, 4.32]
-ppl_high  = [7.10, 5.48]
 
-gap_med   = [0.0676, 0.0993]
-gap_high  = [0.0398, 0.0742]
+def main() -> None:
+    rows = indexed_rows()
+    plt.rcParams.update({"font.family": "serif", "mathtext.fontset": "cm", "font.size": 9})
+    fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.75), constrained_layout=True)
 
-fig, axes = plt.subplots(1, 3, figsize=(13.0, 4.2))
-fig.subplots_adjust(wspace=0.42)
+    for y, model in enumerate(MODELS):
+        med = rows[(model, "medium")]
+        high = rows[(model, "high")]
+        for ax, field in zip(axes, ("test_loss_mean", "generalization_gap")):
+            values = [float(med[field]), float(high[field])]
+            ax.plot(values, [y, y], color="0.65", linewidth=1.1, zorder=1)
+            for corpus, value in zip(("medium", "high"), values):
+                ax.scatter(value, y, s=34, color=COLORS[corpus], zorder=2,
+                           label=corpus.capitalize() if y == 0 else None)
 
-def style_ax(ax):
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.tick_params(labelsize=9, length=3)
-    ax.yaxis.grid(True, linestyle='--', linewidth=0.4, alpha=0.5, zorder=0)
-    ax.set_axisbelow(True)
-    ax.set_xticks(x)
-    ax.set_xticklabels(ARCHS, fontsize=9.5)
+    for ax, title, xlabel in (
+        (axes[0], "Empirical test risk", "Cross-entropy (nats/character)"),
+        (axes[1], "Test − train difference", "Nats/character"),
+    ):
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_yticks(range(len(MODELS)), [LABELS[m] for m in MODELS])
+        ax.spines[["top", "right", "left"]].set_visible(False)
+        ax.tick_params(axis="y", length=0)
+        ax.grid(axis="x", color="0.9", linewidth=0.6)
 
-def add_labels(ax, bars, fmt, offset_pos, offset_neg=None):
-    for bar in bars:
-        h = bar.get_height()
-        if h >= 0:
-            ypos = h + offset_pos
-            va = 'bottom'
-        else:
-            ypos = h + (offset_neg if offset_neg is not None else -offset_pos * 2.5)
-            va = 'top'
-        ax.text(bar.get_x() + bar.get_width() / 2,
-                ypos, fmt.format(h),
-                ha='center', va=va, fontsize=7.5, color='#333333')
+    axes[0].legend(frameon=False, loc="best")
+    fig.savefig(OUTPUT, bbox_inches="tight")
 
-# ── Panel 1: Pérdida de test ──────────────────────────────────────────────────
-ax = axes[0]
-b1 = ax.bar(x - WIDTH/2, test_med,  WIDTH, label='Medium',
-            color=MEDIUM, alpha=ALPHA, edgecolor='white', linewidth=0.6, zorder=3)
-b2 = ax.bar(x + WIDTH/2, test_high, WIDTH, label='High',
-            color=HIGH,   alpha=ALPHA, edgecolor='white', linewidth=0.6, zorder=3)
-ax.set_ylim(0, 2.5)
-ax.set_ylabel('Pérdida de test (entropía cruzada)', fontsize=9.5)
-ax.set_title('Pérdida de test', fontsize=11, pad=8)
-ax.legend(fontsize=9, framealpha=0.0)
-style_ax(ax)
-add_labels(ax, b1, '{:.4f}', 0.03)
-add_labels(ax, b2, '{:.4f}', 0.03)
 
-# ── Panel 2: Perplejidad ──────────────────────────────────────────────────────
-ax = axes[1]
-b3 = ax.bar(x - WIDTH/2, ppl_med,  WIDTH, label='Medium',
-            color=MEDIUM, alpha=ALPHA, edgecolor='white', linewidth=0.6, zorder=3)
-b4 = ax.bar(x + WIDTH/2, ppl_high, WIDTH, label='High',
-            color=HIGH,   alpha=ALPHA, edgecolor='white', linewidth=0.6, zorder=3)
-ax.set_ylim(0, 9.0)
-ax.set_ylabel('Perplejidad', fontsize=9.5)
-ax.set_title('Perplejidad', fontsize=11, pad=8)
-ax.legend(fontsize=9, framealpha=0.0)
-style_ax(ax)
-add_labels(ax, b3, '{:.2f}', 0.15)
-add_labels(ax, b4, '{:.2f}', 0.15)
-
-# ── Panel 3: Brecha de generalización ────────────────────────────────────────
-ax = axes[2]
-b5 = ax.bar(x - WIDTH/2, gap_med,  WIDTH, label='Medium',
-            color=MEDIUM, alpha=ALPHA, edgecolor='white', linewidth=0.6, zorder=3)
-b6 = ax.bar(x + WIDTH/2, gap_high, WIDTH, label='High',
-            color=HIGH,   alpha=ALPHA, edgecolor='white', linewidth=0.6, zorder=3)
-ax.set_ylim(0, 0.14)
-ax.set_ylabel('Gap = test loss $-$ train loss', fontsize=9.5)
-ax.set_title('Brecha de generalización', fontsize=11, pad=8)
-ax.legend(fontsize=9, framealpha=0.0)
-style_ax(ax)
-add_labels(ax, b5, '{:+.4f}', 0.010, offset_neg=-0.018)
-add_labels(ax, b6, '{:+.4f}', 0.010)
-
-plt.savefig('fig_results.pdf', bbox_inches='tight', dpi=200)
-plt.savefig('fig_results.png', bbox_inches='tight', dpi=180)
-print("fig_results OK")
+if __name__ == "__main__":
+    main()

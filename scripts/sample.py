@@ -206,6 +206,9 @@ def main() -> None:
             "training corpus. Choose a prompt using only known characters."
         ) from exc
 
+    if not prompt_ids:
+        raise ValueError("prompt must contain at least one character.")
+
     context = torch.tensor([prompt_ids], dtype=torch.long)
 
     top_k = None if args.top_k == 0 else args.top_k

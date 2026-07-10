@@ -10,6 +10,7 @@ from nicolasm.data import TokenDataset, train_val_test_split
 from nicolasm.models.bigram import BigramLanguageModel
 from nicolasm.models.llama import LlamaStyleLanguageModel
 from nicolasm.models.transformer import TinyTransformerLanguageModel
+from nicolasm.reproducibility import seed_everything
 from nicolasm.tokenizer import CharTokenizer
 
 
@@ -35,6 +36,7 @@ DROPOUT = 0.1
 TRAIN_FRACTION = 0.8
 VAL_FRACTION = 0.1
 TEST_FRACTION = 0.1
+SEED = 1337
 
 
 def parse_args() -> argparse.Namespace:
@@ -72,6 +74,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dropout", type=float, default=DROPOUT)
     parser.add_argument("--train-fraction", type=float, default=TRAIN_FRACTION)
     parser.add_argument("--val-fraction", type=float, default=VAL_FRACTION)
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=SEED,
+        help="Random seed used for initialization and batch sampling.",
+    )
 
     return parser.parse_args()
 
@@ -159,6 +167,8 @@ def estimate_loss(
 def main() -> None:
     args = parse_args()
 
+    seed_everything(args.seed)
+
     if args.max_steps < 0:
         raise ValueError("max_steps must be nonnegative.")
 
@@ -209,6 +219,7 @@ def main() -> None:
     print(f"Test tokens: {len(test_tokens)}")
     print(f"Block size: {args.block_size}")
     print(f"Batch size: {args.batch_size}")
+    print(f"Random seed: {args.seed}")
     print()
 
     train_loss = estimate_loss(model, train_dataset, args.batch_size)
@@ -266,6 +277,7 @@ def main() -> None:
             "train_fraction": args.train_fraction,
             "val_fraction": args.val_fraction,
             "test_fraction": test_fraction,
+            "seed": args.seed,
             "final_train_loss": final_train_loss,
             "final_val_loss": final_val_loss,
         },

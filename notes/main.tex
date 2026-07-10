@@ -1,759 +1,951 @@
-\documentclass[10pt,twocolumn]{article}
+\documentclass[11pt]{article}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[spanish,es-nolists,es-noindentfirst]{babel}
-\usepackage[top=0.85in,bottom=0.85in,left=0.70in,right=0.70in,columnsep=0.26in]{geometry}
-\usepackage{times}
+\usepackage[english]{babel}
+\usepackage[a4paper,margin=1.08in]{geometry}
+\IfFileExists{newtxtext.sty}{\usepackage{newtxtext,newtxmath}}{\usepackage{lmodern}}
 \usepackage{microtype}
-\usepackage{amsmath}
-\usepackage{amssymb}
-\usepackage{amsthm}
-\usepackage{booktabs}
-\usepackage{graphicx}
-\usepackage{xcolor}
-\usepackage{fancyhdr}
-\usepackage[font=footnotesize,labelfont=bf]{caption}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,graphicx,xcolor}
+\usepackage[font=small,labelfont=bf]{caption}
 \usepackage[numbers,sort&compress]{natbib}
-\usepackage[colorlinks=true,linkcolor=blue!55!black,citecolor=blue!55!black,urlcolor=blue!55!black]{hyperref}
-\hypersetup{breaklinks=true}
+\usepackage[colorlinks=true,linkcolor=blue!45!black,citecolor=blue!45!black,urlcolor=blue!45!black]{hyperref}
 
-% --- Estilo de página y captions ---
-\pagestyle{fancy}
-\fancyhf{}
-\fancyhead[C]{\small\itshape Diversidad textual y tokens efectivos --- Nicolás Meléndez (2026)}
-\fancyfoot[C]{\small\thepage}
-\renewcommand{\headrulewidth}{0.35pt}
-\setlength{\abovecaptionskip}{3pt}
-\setlength{\belowcaptionskip}{0pt}
-\setlength{\intextsep}{5pt}
-\setlength{\textfloatsep}{6pt}
-\setlength{\bibsep}{0pt}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{proposition}[definition]{Proposition}
+\newtheorem{lemma}[definition]{Lemma}
+\newtheorem{remark}[definition]{Remark}
+\newtheorem{assumption}[definition]{Assumption}
+\newtheorem{example}[definition]{Example}
 
-% --- Entornos formales ---
-\newtheoremstyle{nicstyle}%
-  {4pt}{4pt}{\normalfont}{}{\bfseries}{.}{.5em}{}
-\theoremstyle{nicstyle}
-\newtheorem{definition}{Definición}
-\newtheorem{remark}[definition]{Observación}
-
-% --- Macros ---
+\newcommand{\A}{\mathcal A}
 \newcommand{\V}{\mathcal V}
-\newcommand{\D}{\mathcal D}
+\newcommand{\X}{\mathcal X}
 \newcommand{\E}{\mathbb E}
+\newcommand{\N}{\mathbb N}
+\newcommand{\R}{\mathbb R}
+\newcommand{\1}{\mathbf 1}
+\newcommand{\KL}{D_{\mathrm{KL}}}
 \newcommand{\softmax}{\operatorname{softmax}}
 \newcommand{\PPL}{\operatorname{PPL}}
-\newcommand{\code}[1]{\texttt{\small #1}}
+\newcommand{\code}[1]{\texttt{#1}}
 
-% --- Metadatos ---
-\title{\Large\bfseries Diversidad textual y tokens efectivos:\\[-1pt]
-un estudio con modelos de lenguaje\\[-1pt] autoregresivos pequeños}
-\author{Nicolás Meléndez\\[-1pt]
-{\small Universidad de los Andes, Bogotá}\\[-1pt]
-{\small\texttt{nicolasmelendez30@gmail.com}}}
-\date{Mayo 2026}
+\title{\bfseries Empirical Textual Diversity and Predictive Risk\\in Character-Level Autoregressive Models}
+\author{Nicolás Meléndez\\Universidad de los Andes, Bogotá\\\texttt{nicolasmelendez30@gmail.com}}
+\date{2026}
 
 \begin{document}
-
-\twocolumn[{%
 \maketitle
-\thispagestyle{fancy}
-\vspace{-1.0em}
-\begin{center}\rule{0.96\textwidth}{0.45pt}\end{center}
-\vspace{-0.2em}
-\noindent\textbf{Resumen.}
-Las leyes de escalamiento relacionan el desempeño de modelos de lenguaje con
-parámetros, datos y cómputo, pero el conteo bruto de tokens no describe por sí
-solo el valor informacional de un corpus. Este trabajo estudia, en un régimen
-pequeño y reproducible, si la diversidad textual empírica sirve como proxy de
-tokens efectivos en el sentido de Chang et~al. Se implementa en el repositorio
-\code{nicolas-lm} un pipeline de modelado autoregresivo
-(tokenizador, dataset de predicción del siguiente token, métricas de corpus,
-Transformer causal y una variante de tipo LLaMA) y se formalizan los objetos
-matemáticos que ejecuta el código: red neuronal entrenable, modelo
-autoregresivo, riesgo poblacional y empírico, entropía cruzada y AdamW. Con
-dos corpus de \(1\,000\,000\) caracteres y el mismo presupuesto de entrenamiento,
-el corpus más diverso presenta mayor entropía de \(n\)-gramas, mayor
-distinct-\(4\) y menor compresibilidad gzip, pero obtiene mayor pérdida de
-test en ambas arquitecturas. La brecha de generalización exhibe el patrón
-contrario: el corpus más diverso presenta menor sobreajuste. En este estudio,
-diversidad local no implica menor riesgo absoluto, aunque sí reduce la
-discrepancia entre entrenamiento y test. Un documento complementario,
-\code{mathematical\_background.tex} en el mismo repositorio, desarrolla los
-preliminares matemáticos en detalle.
-\vspace{0.20em}
 
-\noindent\textbf{Palabras clave.}
-tokens efectivos, Transformer, LLaMA-style, riesgo empírico, AdamW.
-\vspace{0.30em}
-\begin{center}\rule{0.96\textwidth}{0.45pt}\end{center}
-\vspace{0.55em}
-}]
+\begin{abstract}
+We study whether corpora with nearly equal character budgets but different
+empirical diversity induce systematic differences in the predictive risk of
+small autoregressive models. The statistical objects implemented by the
+software are specified explicitly: a finite sample space of strings, empirical
+measures on overlapping context windows, conditional probability kernels
+defined by causal decoders, and a finite-sample optimization problem. The
+experiment consists of one Transformer and one RMSNorm--RoPE--SwiGLU variant,
+each trained once on a homogeneous corpus and on a mixture of authors. The
+mixture has larger block entropy, distinct-$4$ ratio, and gzip byte ratio. Its
+test loss is nevertheless larger for both architectures, whereas its empirical
+test--train difference is smaller. These four fits do not identify a causal
+effect of diversity: character distribution, domain, vocabulary, and parameter
+count vary simultaneously, and only one initialization was observed. We
+therefore treat the result as a computational description rather than a
+population estimate. A unigram-adjusted contextual gain and a replicated
+factorial design are specified for subsequent experiments.
+\end{abstract}
 
-% =====================================================================
-\section{Introducción}
-\label{sec:intro}
+\section{Problem statement}
 
-El entrenamiento moderno de modelos de lenguaje se entiende en buena medida
-por un lente de leyes de escalamiento: al variar parámetros, datos y cómputo,
-la pérdida de test sigue tendencias empíricas relativamente estables
-\cite{kaplan-2020-scaling,hoffmann-2022-chinchilla}. Estas leyes, sin embargo,
-no resuelven una cuestión estadística fundamental: dos corpus con el mismo
-número de tokens pueden inducir distribuciones de entrenamiento muy distintas.
-Chang et~al.~\cite{chang-etal-2024-scaling} formulan esta diferencia mediante
-la noción de \emph{tokens efectivos}: el aporte informacional de un corpus
-depende de su calidad y composición, y no únicamente de su tamaño.
+Let $\A$ be a finite alphabet and let
+$s=(s_0,\ldots,s_{N-1})\in\A^N$ be an observed string. No independence or
+stationarity assumption is imposed on its coordinates. Empirical scaling laws
+relate loss to parameter count, data, and computation
+\cite{kaplan-2020-scaling,hoffmann-2022-chinchilla}; they do not imply that two
+strings of the same length define statistically equivalent learning problems.
+Chang et al. introduce quality corrections that replace raw token count by an
+effective size \cite{chang-etal-2024-scaling}. The present experiment is not a
+replication of that fit: it estimates no scaling coefficient, constructs no
+scaling curve, and uses no teacher model.
 
-\begin{definition}[Corpus y token]
-Un \emph{corpus} es una sucesión finita \(s=(c_0,\ldots,c_{N-1})\) de
-símbolos sobre un alfabeto finito \(V\). Un \emph{tokenizador} es una
-aplicación
-\(\tau:\bigcup_{n\in\mathbb{N}}V^n\to\bigcup_{m\in\mathbb{N}}T^m\),
-donde \(T\) es un alfabeto finito de tokens. En este trabajo se usa el
-caso particular del \emph{nivel caracter}, en el que \(\tau\) es simplemente
-una biyección \(V\to T\) aplicada símbolo por símbolo, de modo que
-\(N\) caracteres producen \(N\) tokens.
-\end{definition}
-
-\begin{definition}[Token efectivo, \cite{chang-etal-2024-scaling}]
-Dado un corpus \(s\) de tamaño \(D\), Chang et~al.\ definen el
-\emph{tamaño efectivo del dataset}
-\[
-D_q \;=\; D\cdot\exp\bigl(c_1\,\mathrm{Dr}(s)+c_2\,S(s)\bigr),
-\]
-donde \(\mathrm{Dr}(s)=|s|/|\mathrm{gzip}(s)|\) es el inverso de la razón
-de compresión gzip\footnote{\(\mathrm{gzip}\): compresor sin pérdida
-estándar (LZ77 + Huffman) aplicado a la codificación UTF-8 de \(s\).};
-a mayor \(\mathrm{Dr}(s)\), más \emph{diverso} el corpus.
-\(S(s)=\mathrm{PPL}_\theta(s)^{-1}\) es el inverso de la perplejidad
-\(\mathrm{PPL}_\theta(s)=\exp(-\tfrac{1}{N}\sum_{i}\log p_\theta(x_i\mid x_{<i}))\)
-bajo un \emph{teacher model} \(p_\theta\); \(\PPL=k\) significa que la distribución del modelo tiene la misma
-incertidumbre, en promedio, que una uniforme sobre \(k\) tokens. Las constantes
-\(c_1,c_2\) se ajustan empíricamente.
-\end{definition}
-
-Este trabajo aísla únicamente una parte medible de \(D_q\): la diversidad
-empírica del texto, sin invocar modelos externos. La pregunta es si dados dos corpus con el mismo número de tokens y entrenando
-el mismo modelo durante el mismo número de pasos,
-el corpus con mayor diversidad textual (medida por las métricas
-\(H_k\), \(D_n\), \(\rho_{\rm gzip}\) que se definen en \S\ref{sec:metrics})
-produce un modelo que generaliza mejor a texto no visto.
-
-%=====================================================================
-\section{Tokenización}
-\label{sec:tokenizer}
-
-\begin{definition}[Tokenizador a nivel caracter]
-Sea \(s\) un corpus. El módulo \code{tokenizer.py} construye el
-vocabulario \(\V=\{c:c\in s\}\) como el conjunto de caracteres distintos
-de \(s\), lo ordena lexicográficamente como
-\(\V=\{v_0<v_1<\cdots<v_{|\V|-1}\}\) y define la biyección
-\(\tau:\V\to\{0,\ldots,|\V|-1\}\) por \(\tau(v_i)=i\). La clase \code{CharTokenizer} implementa \(\tau\) y \(\tau^{-1}\)
-mediante los diccionarios \code{stoi} (\emph{string-to-integer}) e
-\code{itos} (\emph{integer-to-string}). Ambos son necesarios, pues el
-modelo opera sobre enteros y $\tau^{-1}$ permite recuperar el texto
-generado.
-\end{definition}
-
-A diferencia de otros tokenizadores (subpalabra, BPE o SentencePiece
-\cite{sennrich-2016-bpe,kudo-2018-sentencepiece}), el tokenizador por caracteres
-reduce el realismo lingüístico pero garantiza que \(N\) caracteres del
-corpus produzcan \(N\) tokens. Esto hace que las
-métricas de diversidad de \S\ref{sec:metrics} sean directamente comparables con el presupuesto
-de entrenamiento, que medimos en tokens.
-% =====================================================================
-\section{Dataset autoregresivo}
-\label{sec:dataset}
-
-Dado un contexto finito \(B=128\), el módulo \code{data.py} construye en
-\code{TokenDataset} ejemplos supervisados de tokens por desplazamiento de una posición:
-\begin{equation}
-X_i=(x_i,\ldots,x_{i+B-1}),
-\quad
-Y_i=(x_{i+1},\ldots,x_{i+B}).
-\label{eq:windows}
-\end{equation}
-El parámetro \(B\), llamado \emph{block size} o longitud de contexto,
-determina cuántos tokens anteriores ve el modelo cuando predice el siguiente.
-La elección \(B=128\) responde a la necesidad de que \(B\) sea lo suficientemente grande para capturar dependencias
-locales informativas y lo suficientemente pequeño
-para que la atención causal (definida en \S\ref{sec:models}), cuyo costo en memoria y cómputo escala como
-\(O(B^2)\), siga siendo viable a la escala de este experimento que no hace uso de ninguna GPU.
-
-La tarea es, como dijimos, \emph{predecir el siguiente token}: dado \(X_i\), el modelo
-asigna una distribución de probabilidad sobre el vocabulario \(\V\) para
-cada una de sus \(B\) posiciones, y compara con \(Y_i\), que contiene
-los tokens correctos. Heurísticamente, si los últimos caracteres son
-\code{"la casa es~"}, el modelo debería asignar más
-masa de probabilidad a letras que comienzan palabras españolas comunes
-(\code{'g'} de \code{"grande"}, \code{'b'} de \code{"bonita"},
-\code{'m'} de \code{"mía"}) que a letras improbables en esa posición
-(\code{'x'}, \code{'z'}) o a dígitos. Aprender un modelo es aprender, usando técnicas de \textit{deep learning},
-estas regularidades a partir de los datos.
-
-Los pares \(\{(X_i,Y_i)\}\) son naturalmente solapados, de donde se sigue que las observaciones \emph{no} son
-iid. Por tanto, los errores estándar reportados por cada batch deben
-leerse como meras \emph{descripciones}, pues dan una idea del orden de magnitud de
-la fluctuación observada entre batches, pero no son intervalos de
-confianza válidos en el sentido estadístico más puro.
-
-Para la evaluación, la sucesión tokenizada se divide en tres partes
-disjuntas con \code{train\_val\_test\_split}. El primer \(80\%\) de los
-tokens forma el conjunto de \emph{entrenamiento}, y es el conjunto sobre el cual se
-ajustan los parámetros \(w\) por un algoritmo similar al descenso de gradiente; el siguiente
-\(10\%\) forma el conjunto de \emph{validación}, que monitorea el
-progreso del entrenamiento (típicamente, detecta sobreajuste comparando
-pérdida de entrenamiento con pérdida de validación); el último \(10\%\)
-forma el conjunto de \emph{test}, reservado para la evaluación final en datos no vistos antes por el modelo. 
-
-\section{Red neuronal entrenable}
-\label{sec:nn}
-
-Formalmente, una \emph{red neuronal feedforward} es una función
-parametrizada \(f_w:\mathbb R^{d_{\rm in}}\to\mathbb R^{d_{\rm out}}\)
-obtenida componiendo capas alternadas de transformaciones afines
-\(x\mapsto Wx+b\) (con \(W\) una matriz y \(b\) un vector aprendibles) y
-funciones de activación no lineales (ReLU, GELU, SiLU, etc.) aplicadas
-coordenada a coordenada
-\cite[Cap.~2]{petersen-zech-2026-mathematical}. Los parámetros \(w\)
-son la concatenación de los pesos \(W\) y sesgos \(b\) de cada capa, y
-se ajustan minimizando una función de pérdida sobre los datos. En modelado de lenguaje, las entradas son tokens (no vectores reales), pero la primera capa de cada modelo los convierte en vectores mediante una \textit{tabla de embeddings}, y a
-partir de ahí la red opera sobre \(\mathbb R^d\).
-
-\begin{definition}[Red neuronal entrenable]
-\label{def:nn}
-Sea \(w\in\mathbb R^n\) el vector de parámetros (embeddings, matrices
-lineales, pesos de atención, ganancias de normalización, MLPs). La red
-neuronal entrenable usada aquí es la función parametrizada
-\[
-f_w:\{0,\ldots,|\V|-1\}^{B}\to\mathbb R^{B\times|\V|},
-\]
-que recibe una sucesión de \(B\) tokens y devuelve \emph{logits} indexados
-por posición \(t\) y por símbolo \(j\) del vocabulario.
-\end{definition}
-
-El bigrama de \S\ref{sec:models} es un modelo paramétrico equivalente a
-una mera tabla de logits: con un único parámetro
-\(A\in\mathbb R^{|\V|\times|\V|}\), computa
-\(f_w(X)_{t,:}=A_{x_t,:}\), es decir, ignora todo el contexto
-\((x_0,\ldots,x_{t-1})\) excepto el token inmediatamente anterior
-\(x_t\). No se llama aquí red neuronal profunda. El Transformer
-(\code{transformer.py}) y el modelo LLaMA-style (\code{llama.py}) sí lo
-son, en el sentido de Petersen-Zech
-\cite[Cap.~2 y Cap.~17.3]{petersen-zech-2026-mathematical}.
-
-% =====================================================================
-\section{Modelo probabilístico autoregresivo}
-\label{sec:autoregressive}
-
-Un modelo de lenguaje autoregresivo es una familia de medidas de probabilidad
-discretas \(\{p_w\}\) sobre sucesiones finitas de tokens que se deja factorizar como
-\begin{equation}
-p_w(x_0,\ldots,x_{T-1})
-=\prod_{t=0}^{T-1}p_w(x_t\mid x_{<t}).
-\label{eq:autoreg}
-\end{equation}
-Para \(X=(x_0,\ldots,x_{B-1})\) y una posición \(t\),
-denotamos por \(f_w(X)_{t,:}\in\mathbb R^{|\V|}\) la \(t\)-ésima fila de
-la matriz de logits que devuelve la red: es decir, los logits que el
-modelo asigna a cada candidato del vocabulario para la posición
-siguiente, dado el contexto \(X\). Los logits son números reales sin
-normalizar, no probabilidades, así que para obtener una distribución de probabilidad sobre \(\V\), se aplica
-la \emph{función softmax} \(\sigma:\mathbb R^k\to\Delta^{k-1}\),
-definida por
-\[
-\sigma(z)_j=\frac{e^{z_j}}{\sum_{i=1}^{k}e^{z_i}},
-\qquad j=1,\ldots,k.
-\]
-Por construcción \(\sigma(z)_j>0\) y \(\sum_j\sigma(z)_j=1\), así que
-\(\sigma(z)\) pertenece al símplex de probabilidad \(\Delta^{k-1}\).
-La probabilidad condicional inducida por el modelo es
-\begin{equation}
-p_w(x_{t+1}=j\mid X)
-=\sigma(f_w(X)_{t,:})_j.
-\label{eq:softmax}
-\end{equation}
-La distribución resultante asigna probabilidades a cada elemento del
-vocabulario, y es formalmente análoga a tirar un dado de \(|\V|\) caras con
-probabilidades posiblemente desiguales. Por ejemplo, con un
-mini-vocabulario \(\V=\{\text{'a'},\text{'b'},\text{'c'}\}\) y logits
-\((2.0,\,0.5,\,0.1)\), softmax devuelve aproximadamente
-\((0.74,\,0.17,\,0.09)\), que se interpreta así: dado el contexto
-actual, el modelo asigna probabilidad \(74\%\) a que el siguiente
-caracter sea \code{'a'}, \(17\%\) a \code{'b'} y \(9\%\) a \code{'c'}.
-
-Los modelos no predicen texto directamente, sino una distribución de probabilidad por posición, y la generación de texto es iterativa:
-dado un contexto inicial \(X\), \code{generate} evalúa \(f_w(X)\) en cada modelo, toma el valor de la distribución correspondiente a la
-última posición (que es la del próximo token), elige aleatoriamente
-un token de acuerdo con esa distribución, lo concatena al contexto y
-repite hasta alcanzar la longitud deseada.
-
-% =====================================================================
-\section{Función de pérdida}
-\label{sec:loss}
-
-\begin{definition}[Pérdida token a token]
-\label{def:loss}
-Para \((X,Y)\) y parámetros \(w\), la \emph{entropía cruzada}
-por posición es
-\[
-\ell(f_w(X),Y)
-=\frac{1}{B}\sum_{t=1}^{B}-\log\softmax\!\bigl(f_w(X)_{t,:}\bigr)_{Y_t}.
-\]
-Esta cantidad es el \emph{negative log-likelihood} bajo el modelo
-\eqref{eq:autoreg}; minimizarla equivale a maximizar la verosimilitud
-condicional del token correcto. Será nuestra función de pérdida. 
-\end{definition}
-
-Calin \cite{calin-2020-deep-learning-architectures} motiva la entropía
-cruzada como el costo natural. Minimizarla equivale a minimizar la
-divergencia de Kullback-Leibler entre la distribución empírica y la del
-modelo. Wegner
-\cite{wegner-2024-mathematical-introduction-data-science} deriva su
-gradiente con respecto a los logits:
-\[
-\nabla_z\!\bigl[-\log\softmax(z)_y\bigr]=\softmax(z)-e_y,
-\]
-donde \(e_y\in\{0,1\}^{|\V|}\) vale \(1\) en la coordenada \(y\) y \(0\)
-en las demás. En este sentido, el gradiente es la diferencia entre lo que el modelo
-predice y la verdad. En el código, \code{F.cross\_entropy} evalúa la pérdida y
-\code{loss.backward()} propaga este gradiente.
-
-% =====================================================================
-\section{Riesgo poblacional y riesgo empírico}
-\label{sec:risk}
-
-\begin{definition}[Riesgo poblacional, Petersen-Zech
-\protect{\cite[Def.~14.2]{petersen-zech-2026-mathematical}}]
-Sea \(\D\) una distribución desconocida sobre pares \((X,Y)\). El
-\emph{riesgo poblacional} de \(f_w\) es
-\[
-R(w)=\E_{(X,Y)\sim\D}[\ell(f_w(X),Y)].
-\]
-\end{definition}
-
-\begin{definition}[Riesgo empírico, Petersen-Zech
-\protect{\cite[Def.~14.4]{petersen-zech-2026-mathematical}}]
-Dado un dataset \(S=\{(X_i,Y_i)\}_{i=1}^{m}\sim D\), su riesgo empírico es
-\[
-\widehat R_S(w)=\frac{1}{m}\sum_{i=1}^{m}\ell(f_w(X_i),Y_i).
-\]
-\end{definition}
-
-La distribución \(\D\) no es observable; el dataset \(S\) sí, y se obtiene
-del corpus por \eqref{eq:windows}. Aprender significa, en el sentido de
-Petersen-Zech \cite[Def.~14.5]{petersen-zech-2026-mathematical}, buscar un
-\(w\) que reduzca \(\widehat R_S(w)\), no \(R(w)\) directamente. La generalización se evalúa
-comparando pérdida de entrenamiento y test. 
-
-\section{Optimización}
-\label{sec:optim}
-
-El script \code{train.py} minimiza el riesgo empírico
-\(\widehat R_S(w)\) con AdamW
-\cite{loshchilov-2019-adamw,kingma-2015-adam}, una variante de descenso
-estocástico por gradiente. El gradiente completo
-\(\nabla_w\widehat R_S(w_k)\) requiere recorrer todo el dataset, que
-es muy costoso; en cada paso se usa entonces un minibatch \(B_k\) de tamaño \(M=32\)
-y se computa \(g_k=\nabla_w\widehat R_{B_k}(w_k)\), un estimador
-insesgado del gradiente completo. La actualización extiende la de
-Petersen-Zech \cite[\S 10.4]{petersen-zech-2026-mathematical} con un
-término de decaimiento desacoplado:
+For two strings $s^{(0)}$ and $s^{(1)}$ of approximately equal length, two
+neural families, and a fixed optimization budget, we compare
 \begin{align}
-u_{k+1}&=\beta_1 u_k+(1-\beta_1)g_k,\label{eq:adam-m}\\
-s_{k+1}&=\gamma_1 s_k+(1-\gamma_1)g_k\odot g_k,\\
-w_{k+1}&=w_k-\alpha\bigl(\widehat u_{k+1}\oslash(\sqrt{\widehat s_{k+1}}+\varepsilon)+\lambda w_k\bigr).
-\label{eq:adam-w}
+ L_j&=\widehat R_{\mathrm{te}}(\widehat w;s^{(j)}),\label{eq:test-risk}\\
+ \Gamma_j&=\widehat R_{\mathrm{te}}(\widehat w;s^{(j)})-
+ \widehat R_{\mathrm{tr}}(\widehat w;s^{(j)}),\quad j\in\{0,1\}.
+ \label{eq:gap}
 \end{align}
-Las cantidades \(u_k\) y \(s_k\) son medias móviles exponenciales del
-gradiente y de su cuadrado coordenada a coordenada (estimaciones del
-primer y segundo momento de \(g_k\));
-\(\widehat u_k=u_k/(1-\beta_1^{\,k})\) y
-\(\widehat s_k=s_k/(1-\gamma_1^{\,k})\) corrigen el sesgo hacia cero
-introducido por la inicialización \(u_0=s_0=0\). El paso efectivo es
-\(g_k\) reescalado por su magnitud local: coordenadas con gradientes
-grandes y consistentes avanzan rápido, las ruidosas avanzan despacio.
-El término \(\lambda w_k\) (\emph{weight decay} desacoplado) contrae
-los pesos hacia cero en cada paso, lo que regulariza el ajuste.
-Con \(\beta_1=0.9\), \(\gamma_1=0.999\), \(\varepsilon=10^{-8}\),
-\(\alpha=3\cdot 10^{-4}\) y \(\lambda=0.01\) (default en PyTorch), una
-iteración ejecuta \code{optimizer.zero\_grad}, \code{loss.backward()} y
-\code{optimizer.step()}.
-% =====================================================================
-\section{Modelos implementados}
-\label{sec:models}
+$L_j$ is absolute predictive loss on a held-out segment of the same corpus.
+$\Gamma_j$ compares two empirical measures supported on different windows. It
+is not itself a population generalization bound. Neither quantity identifies a
+causal effect of diversity without further design assumptions.
 
-\paragraph{Bigrama.}
-\code{BigramLanguageModel} es una \emph{cadena de Markov de orden uno}.
-Una cadena de Markov es un proceso estocástico \((x_0,x_1,x_2,\ldots)\)
-sobre un espacio de estados (aquí, el vocabulario \(\V\)) que satisface
-la propiedad de Markov: la distribución del siguiente estado depende
-solo del actual, no de todo el pasado. Formalmente, de orden uno
-significa
+\section{Measure-theoretic foundations}
+\label{sec:measure}
+
+This section fixes the probabilistic language used below. The material is
+standard; proofs are included when they clarify a construction used by the
+software. General versions can be found in
+\cite{petersen-zech-2026-mathematical}.
+
+\subsection{Measurable spaces and probability measures}
+
+\begin{definition}[$\sigma$-algebra]
+Let $\Omega$ be a set. A collection $\mathcal F\subseteq2^\Omega$ is a
+$\sigma$-algebra if $\Omega\in\mathcal F$, if it is closed under complements,
+and if it is closed under countable unions. The pair $(\Omega,\mathcal F)$ is a
+measurable space.
+\end{definition}
+
+On a finite set $S$ we use the power set $2^S$. On $\R^d$ we use the Borel
+$\sigma$-algebra $\mathcal B(\R^d)$ generated by the Euclidean open sets.
+
+\begin{definition}[Measure]
+A measure on $(\Omega,\mathcal F)$ is a function
+$\mu:\mathcal F\to[0,\infty]$ such that $\mu(\varnothing)=0$ and
 \[
-p(x_{t+1}\mid x_0,\ldots,x_t)=p(x_{t+1}\mid x_t).
+ \mu\left(\bigcup_{n=1}^{\infty}A_n\right)
+ =\sum_{n=1}^{\infty}\mu(A_n)
 \]
-El bigrama aprende una matriz \(A\in\mathbb R^{|\V|\times|\V|}\)
-realizada como \code{nn.Embedding(vocab\_size, vocab\_size)} (cada fila
-es el vector de logits asociado a un estado de partida) y modela
+for every sequence of pairwise disjoint $A_n\in\mathcal F$. It is a
+probability measure if $\mu(\Omega)=1$. A probability space is a triple
+$(\Omega,\mathcal F,\mathbb P)$.
+\end{definition}
+
+For $\omega\in\Omega$, the Dirac measure is
+$\delta_\omega(A)=\1\{\omega\in A\}$. Hence the empirical measure of
+$\omega_1,\ldots,\omega_n$ is $n^{-1}\sum_i\delta_{\omega_i}$. This formula,
+rather than informal language about a ``dataset distribution'', defines every
+empirical risk in this paper.
+
+\begin{definition}[Random variable and law]
+Let $(\Omega,\mathcal F)$ and $(S,\mathcal S)$ be measurable spaces. A map
+$X:\Omega\to S$ is measurable if $X^{-1}(A)\in\mathcal F$ for every
+$A\in\mathcal S$. If $X$ is defined on a probability space, it is an
+$S$-valued random variable. Its law is the pushforward measure
 \[
-p_w(x_{t+1}=j\mid x_t=i)=\sigma(A_{i,:})_j.
+ \mathbb P_X=\mathbb P\circ X^{-1},
+ \qquad \mathbb P_X(A)=\mathbb P(X\in A).
 \]
-La fila \(A_{i,:}\) son los logits de la distribución condicional de
-\(x_{t+1}\) dado \(x_t=i\). El modelo ignora todo el contexto excepto
-el último caracter; sirve aquí como referencia conceptual del régimen
-sin memoria larga.
+\end{definition}
 
-\paragraph{Transformer causal.}
-\code{TinyTransformerLanguageModel} \cite{vaswani-2017-attention} es
-una red neuronal decoder-only que procesa la sucesión de tokens en tres
-etapas, descritas a continuación.
-
-\emph{Embeddings.} Cada token \(x_t\in\{0,\ldots,|\V|-1\}\) se
-transforma en un vector \(E_t\in\mathbb R^d\) (con \(d=64\)) mediante
-una tabla de embeddings aprendible
-(\code{nn.Embedding(\(|\V|\), \(d\))}). A \(E_t\) se le suma un
-embedding posicional aprendible que codifica la posición absoluta
-\(t\). El resultado es una matriz \(H\in\mathbb R^{B\times d}\).
-
-\emph{Bloques pre-norm.} \(H\) atraviesa \(L=2\) bloques de la forma
+If $S$ is finite, a probability law is a vector $(p_s)_{s\in S}$ with
+$p_s\ge0$ and $\sum_sp_s=1$. Integration then reduces to summation:
 \[
-H \leftarrow H+\operatorname{Attn}(\operatorname{LayerNorm}(H)),\quad
-H \leftarrow H+\operatorname{FFN}(\operatorname{LayerNorm}(H)),
+ \E[g(X)]=\int_\Omega g(X(\omega)),d\mathbb P(\omega)
+ =\sum_{s\in S}g(s)p_s.
 \]
-donde las sumas residuales facilitan la propagación de gradientes,
-\(\operatorname{LayerNorm}(x)=g\odot\bigl((x-\mu)/\sigma\bigr)+b\) con
-\(\mu,\sigma\) la media y desviación de las coordenadas de \(x\) y
-\(g,b\in\mathbb R^d\) aprendibles, y \(\operatorname{FFN}\) es un
-MLP\footnote{\emph{Multi-Layer Perceptron}: red feedforward de dos
-capas lineales con una activación no lineal intermedia, aquí
-\(\operatorname{FFN}(x)=W_2\,\operatorname{GELU}(W_1 x+b_1)+b_2\). La
-activación \(\operatorname{GELU}(z)=z\cdot\Phi(z)\), con \(\Phi\) la
-cdf de la normal estándar, es una variante suave de ReLU(x)= $\max\{0, x\}$ \cite{calin-2020-deep-learning-architectures}.} posición-a-posición con activación GELU.
-La atención se detalla abajo.
 
-\emph{Cabeza de salida.} Una \code{LayerNorm} final y una proyección
-lineal \code{lm\_head}\(:\mathbb R^d\to\mathbb R^{|\V|}\) producen los
-logits \(f_w(X)\).
+\subsection{Conditioning}
 
-\emph{Atención causal multi-cabeza.} Para cada cabeza se calculan
-\begin{equation}
-Q=HW_Q,\quad K=HW_K,\quad V=HW_V,
-\label{eq:qkv}
-\end{equation}
-con \(W_Q,W_K,W_V\in\mathbb R^{d\times d_h}\) aprendibles, y la salida es
-\begin{equation}
-\operatorname{Attn}(H)
-=\sigma\!\left(\frac{QK^\top}{\sqrt{d_h}}+M_c\right)V.
-\label{eq:attn}
-\end{equation}
-Cada fila \(q_t\) de \(Q\) es una \emph{consulta} (qué información
-necesita la posición \(t\)), cada fila \(k_s\) de \(K\) una
-\emph{clave} (qué ofrece la posición \(s\)), y el producto interno
-\(\langle q_t,k_s\rangle\) mide compatibilidad; softmax convierte
-estas compatibilidades en pesos no negativos que suman uno, y la
-salida en la posición \(t\) es la combinación convexa de los
-\emph{valores} \(v_s\) (filas de \(V\)) con esos pesos. La división por
-\(\sqrt{d_h}\) evita que los argumentos del softmax crezcan con la
-dimensión, y la máscara causal \(M_c\) de \code{causal\_mask.py} es triangular
-inferior (\(M_{c,ts}=0\) si \(s\le t\), \(-\infty\) en otro caso), pues al
-aplicar softmax, las entradas con \(-\infty\) cumplen
-\(e^{-\infty}=0\), por lo que los pesos correspondientes
-\(\alpha_{t,s}\) son cero para \(s>t\) y la posición \(t\) solo \textit{atiende}
-a \(s\le t\).
-\code{MultiHeadCausalSelfAttention} ejecuta \(h=4\) cabezas en paralelo
-con \(d_h=d/h=16\), concatena sus salidas y aplica una proyección
-lineal final.
-
-\paragraph{LLaMA-style.}
-\code{LlamaStyleLanguageModel} mantiene la arquitectura general
-(decoder-only, atención causal, conexiones residuales, pre-norm) y la
-misma tarea y pérdida, pero sustituye tres piezas internas como se
-propone en \cite{touvron-2023-llama}.
-
-\emph{RoPE: embeddings rotativos.} En lugar de sumar un embedding
-posicional aprendido al embedding de token, RoPE
-\cite{su-2021-roformer} codifica la posición rotando las queries y
-keys por un ángulo dependiente de la posición absoluta. Las \(d_h\)
-coordenadas de cada query/key se agrupan en pares
-\((x_{2i},x_{2i+1})\), y para la posición \(p\) se aplica una rotación
-2D:
+\begin{definition}[Conditional expectation]
+Let $Z$ be integrable and $\mathcal G\subseteq\mathcal F$. A conditional
+expectation $\E[Z\mid\mathcal G]$ is a $\mathcal G$-measurable integrable
+random variable satisfying
 \[
-\begin{pmatrix}x'_{2i}\\x'_{2i+1}\end{pmatrix}
-=\begin{pmatrix}\cos p\theta_i & -\sin p\theta_i\\\sin p\theta_i & \cos p\theta_i\end{pmatrix}
-\begin{pmatrix}x_{2i}\\x_{2i+1}\end{pmatrix},
+ \int_G\E[Z\mid\mathcal G],d\mathbb P
+ =\int_G Z,d\mathbb P
+ \quad\text{for every }G\in\mathcal G.
 \]
-con frecuencias \(\theta_i=10000^{-2i/d_h}\). Tras aplicar RoPE, el producto interno
-\(\langle q_t,k_s\rangle\) depende solo de la diferencia \(t-s\), no de
-las posiciones absolutas\footnote{Sea \(R_p\) la matriz bloque-diagonal
-con bloques \(2\times 2\) de rotación por \(p\theta_i\). Las
-rotaciones cumplen \(R_p^\top=R_{-p}\) y \(R_a R_b=R_{a+b}\), así que
-\(\langle R_t q_t, R_s k_s\rangle = q_t^\top R_{s-t}\,k_s\), que solo
-depende de \(s-t\).}. Implementado en
-\code{rope.py}.
+It is unique up to almost-sure equality.
+\end{definition}
 
-\emph{RMSNorm: normalización simplificada.} RMSNorm
-\cite{zhang-2019-rmsnorm} suprime el paso de centrado de
-\code{LayerNorm}:
+If $X,Y$ are finite-valued with joint mass $p(x,y)$ and $p_X(x)>0$, then
 \[
-\mathrm{RMSNorm}(x)=g\odot\frac{x}{\sqrt{d^{-1}\sum_{j}x_j^2+\varepsilon}},
+ p(y\mid x)=\frac{p(x,y)}{p_X(x)},
+ \qquad
+ \E[g(Y)\mid X=x]=\sum_y g(y)p(y\mid x).
 \]
-con \(g\in\mathbb R^d\) aprendible. El centrado aporta poca información
-útil y RMSNorm resulta más barata. Definida en \code{rmsnorm.py}.
+The conditional mass $p(\cdot\mid x)$ is the object approximated by a
+next-token model.
 
-\emph{SwiGLU: feedforward con compuerta.} SwiGLU
-\cite{shazeer-2020-glu} reemplaza el MLP estándar por un mecanismo de
-compuerta multiplicativa:
+\begin{proposition}[Tower property; standard]
+If $Z$ is integrable and $\mathcal H\subseteq\mathcal G\subseteq\mathcal F$,
+then
 \[
-\mathrm{SwiGLU}(x)=W_d\bigl(\mathrm{SiLU}(W_gx)\odot W_ux\bigr),
+ \E[\E[Z\mid\mathcal G]\mid\mathcal H]
+ =\E[Z\mid\mathcal H]
+ \quad\text{almost surely}.
 \]
-con activación SiLU\footnote{\emph{Sigmoid Linear Unit}:
-\(\mathrm{SiLU}(z)=z\cdot\sigma_{\text{logística}}(z)\), donde
-\(\sigma_{\text{logística}}(z)=1/(1+e^{-z})\). Es también una alternativa suave
-a ReLU \cite{calin-2020-deep-learning-architectures}.}. La rama \(W_u x\) propaga la
-información mientras \(\mathrm{SiLU}(W_g x)\) actúa como compuerta
-coordenada a coordenada. Definido en \code{swiglu.py}, con proyecciones
-sin sesgo.
+In particular, $\E[\E[Z\mid\mathcal G]]=\E[Z]$.
+\end{proposition}
 
-Así, Transformer y LLaMA-style comparan dos sesgos inductivos para la
-misma distribución autoregresiva.
+\subsection{Stochastic processes and probability kernels}
 
-% =====================================================================
-\section{Métricas}
-\label{sec:metrics}
+\begin{definition}[Stochastic process and filtration]
+For an index set $T$ and a measurable state space $S$, a stochastic process is
+a family $(X_t)_{t\in T}$ of $S$-valued random variables on one probability
+space. For $T=\N_0$, its natural filtration is
+\[
+ \mathcal F_t^X=\sigma(X_0,\ldots,X_t),
+\]
+the information generated up to time $t$.
+\end{definition}
 
-\paragraph{Diversidad del corpus.}
-Un \(k\)-grama es una cadena \(g=(c_i,\ldots,c_{i+k-1})\).
-Sea
-\(\widehat p_k(g)=\#\{i:(c_i,\ldots,c_{i+k-1})\}/(N-k+1)\)
-la frecuencia empírica de \(g\). El módulo \code{corpus\_stats.py} computa
+\begin{definition}[Markov property]
+A discrete process $(X_t)$ is a first-order Markov process if, for every $t$
+and every state $a$,
+\[
+ \mathbb P(X_{t+1}=a\mid\mathcal F_t^X)
+ =\mathbb P(X_{t+1}=a\mid X_t)
+ \quad\text{almost surely}.
+\]
+\end{definition}
+
+An autoregressive language model need not be first-order Markov: its kernel may
+depend on the whole available context. The bigram model is first-order Markov.
+A causal decoder instead satisfies an adaptedness requirement: its logits at
+time $t$ may depend on $\mathcal F_t^X$ but not on future tokens.
+
+\begin{definition}[Probability kernel]
+For measurable spaces $(S,\mathcal S)$ and $(T,\mathcal T)$, a probability
+kernel $K$ from $S$ to $T$ satisfies: (i) $K(s,\cdot)$ is a probability measure
+for each $s$; and (ii) $s\mapsto K(s,A)$ is measurable for every
+$A\in\mathcal T$.
+\end{definition}
+
+On finite alphabets measurability is automatic. The chain rule for a joint mass
+function is a product of successive kernels; this is the measure-theoretic
+content of autoregressive factorization.
+
+\section{Statistical learning from first principles}
+\label{sec:learning}
+
+Let $(\mathcal U,\mathcal U_0)$ be an input space,
+$(\mathcal Y,\mathcal Y_0)$ an output space, and $\mathcal O$ an action space.
+
+\begin{definition}[Hypothesis, loss, and risk]
+A hypothesis is a measurable map $h:\mathcal U\to\mathcal O$. A hypothesis
+class $\mathcal H$ is a set of hypotheses. Given a measurable loss
+$\ell:\mathcal O\times\mathcal Y\to[0,\infty]$ and a data law $P$ on
+$\mathcal U\times\mathcal Y$, the population risk is
+\[
+ R_P(h)=\int\ell(h(u),y),dP(u,y).
+\]
+\end{definition}
+
+\begin{definition}[Bayes risk and approximation error]
+The Bayes and class-restricted risks are
+\[
+ R_P^*=\inf_{h\text{ measurable}}R_P(h),
+ \qquad R_{P,\mathcal H}^*=\inf_{h\in\mathcal H}R_P(h).
+\]
+The quantity $R_{P,\mathcal H}^*-R_P^*\ge0$ is the approximation error of
+$\mathcal H$ under $P$ and $\ell$.
+\end{definition}
+
+For observations $Z_i=(U_i,Y_i)$, define
+\[
+ \widehat P_n=\frac1n\sum_{i=1}^n\delta_{Z_i},
+ \qquad
+ \widehat R_n(h)=\int\ell(h(u),y),d\widehat P_n
+ =\frac1n\sum_{i=1}^n\ell(h(U_i),Y_i).
+\]
+
+\begin{definition}[Learning algorithm]
+A learning algorithm is a measurable map
+$\mathfrak A:(\mathcal U\times\mathcal Y)^n\to\mathcal H$. Its output on
+$S=(Z_1,\ldots,Z_n)$ is $\widehat h_S=\mathfrak A(S)$. An empirical risk
+minimizer belongs to
+$\operatorname*{argmin}_{h\in\mathcal H}\widehat R_n(h)$, when this set is
+nonempty.
+\end{definition}
+
+The trained network is not known to be an exact empirical risk minimizer. It is
+the output of a finite randomized algorithm; parameter initialization and
+minibatch indices are part of that algorithm's randomness.
+
+\begin{proposition}[Excess-risk decomposition; algebraic]
+Suppose $h_{\mathcal H}^*$ minimizes $R_P$ over $\mathcal H$. For every
+$\widehat h\in\mathcal H$,
 \begin{align*}
-H_k&=-\sum_g\widehat p_k(g)\log\widehat p_k(g) \quad(\text{en nats}),\\
-D_n&=\frac{\#\{n\text{-gramas únicos}\}}{\#\{n\text{-gramas totales}\}},\\
-\rho_{\rm gzip}&=\frac{|\mathrm{gzip}(s)|}{|s|}.
+ R_P(\widehat h)-R_P^*
+ &=\underbrace{R_{P,\mathcal H}^*-R_P^*}_{\text{approximation}}\\
+ &+\underbrace{R_P(\widehat h)-\widehat R_n(\widehat h)
+ +\widehat R_n(h_{\mathcal H}^*)-R_P(h_{\mathcal H}^*)}_{
+ \text{estimation/generalization}}\\
+ &+\underbrace{\widehat R_n(\widehat h)-
+ \widehat R_n(h_{\mathcal H}^*)}_{\text{empirical optimization}}.
 \end{align*}
-Cada una captura una faceta distinta del corpus. \(H_k\) mide la
-\emph{incertidumbre estadística promedio} de los \(k\)-gramas: \(H_k\)
-alto significa que muchos \(k\)-gramas distintos aparecen con
-probabilidades comparables; \(H_k\) bajo significa que unos pocos
-\(k\)-gramas dominan la distribución empírica. \(D_n\) mide la
-\emph{fracción de \(n\)-gramas únicos}: cercana a \(1\) cuando casi
-todos los \(n\)-gramas son distintos (poca repetición exacta de bloques
-cortos), cercana a \(0\) cuando hay mucha repetición. \(\rho_{\rm gzip}\)
-aproxima la \emph{redundancia compresible} detectable por LZ77: valores
-cercanos a \(1\) indican baja redundancia (texto difícil de comprimir);
-valores cercanos a \(0\) indican mucha redundancia. \(\rho_{\rm gzip}\)
-se relaciona con la razón de compresión usada por
-Chang et~al.~\cite{chang-etal-2024-scaling} en el límite de
-no-redundancia.
+\end{proposition}
 
-Las tres son \emph{medidas distribucionales} del texto: capturan
-propiedades estadísticas observables sobre las frecuencias de
-subcadenas, y no coherencia semántica (si el
-texto tiene sentido), factualidad (si lo que afirma es verdadero), ni
-syntheticity (cuán típico es el texto bajo un modelo de lenguaje
-entrenado).
+\begin{proof}
+Add and subtract $\widehat R_n(\widehat h)$,
+$\widehat R_n(h_{\mathcal H}^*)$, and $R_P(h_{\mathcal H}^*)$; then group
+terms. The identity uses no probabilistic assumption.
+\end{proof}
 
-\paragraph{Evaluación.}
-Sobre el split de test se reportan cuatro cantidades. La \emph{pérdida
-de test} \(\widehat R_{\rm test}\) es el riesgo empírico de entropía
-cruzada (Definición~\ref{def:nn} arriba ya formalizó la pérdida; aquí
-se evalúa sobre el conjunto de test): pérdida más baja indica mayor
-probabilidad asignada al token correcto. La \emph{pérdida de
-entrenamiento} \(\widehat R_{\rm train}\) es la misma cantidad sobre
-el split de entrenamiento. La \emph{perplejidad}
-\(\PPL=\exp(\widehat R_{\rm test})\) es una transformación monótona
-de la pérdida y, por tanto, ordena los modelos exactamente igual; aun
-así, se reporta porque su interpretación es más intuitiva: si
-\(\PPL=k\), el modelo se comporta, en promedio, como si en cada
-posición tuviera que elegir uniformemente entre \(k\) tokens. Esto
-permite contrastar resultados con la literatura, que históricamente
-usa perplejidad en lugar de pérdida. La \emph{brecha de generalización}
-\(\mathrm{gap}=\widehat R_{\rm test}-\widehat R_{\rm train}\) mide la
-diferencia entre desempeño dentro y fuera de entrenamiento; gap
-cercano a cero (o negativo) sugiere ajuste justo o subajuste, y gap
-positivo grande sugiere sobreajuste.
+The decomposition explains why a cross-corpus loss difference cannot be
+assigned to one mechanism. Changing a corpus may alter Bayes risk,
+approximation error, finite-sample deviation, and the optimization landscape.
 
-% =====================================================================
-\section{Protocolo experimental}
-\label{sec:protocol}
+If $Z_1,\ldots,Z_n$ are iid from $P$ and $h$ is fixed independently of the
+sample, then $\E[\widehat R_n(h)]=R_P(h)$. If also
+$0\le\ell\le M$, Hoeffding's inequality yields
+\[
+ \mathbb P(|\widehat R_n(h)-R_P(h)|\ge\varepsilon)
+ \le2\exp(-2n\varepsilon^2/M^2).
+\]
+For a data-dependent $\widehat h$, a pointwise bound is insufficient. One needs
+uniform complexity control, stability, PAC-Bayes analysis, or another learning
+theorem. None applies automatically to overlapping text windows, so no
+population generalization bound is claimed here.
 
-Se comparan dos corpus de \(1\,000\,000\) caracteres, \emph{Medium} (más
-homogéneo: solo un autor) y \emph{High} (mezcla de diez autores
-y géneros intercalados en fragmentos de 5\,000 caracteres), con el mismo
-presupuesto de entrenamiento. El script \code{run\_effective\_tokens.py} ejecuta el
-pipeline corpus por corpus y modelo por modelo y agrega resultados con
-\code{summarize\_results.py}. La Tabla~\ref{tab:hparams} resume los
-hiperparámetros comunes.
+\section{Neural networks as parametric maps}
+\label{sec:networks}
 
-\begin{table}[h]
+\subsection{Classical feedforward networks}
+
+\begin{definition}[Affine layer]
+For $m,n\in\N$, an affine layer is
+$A_{W,b}:\R^n\to\R^m$, $A_{W,b}(x)=Wx+b$, where
+$W\in\R^{m\times n}$ and $b\in\R^m$. It has $mn+m$ scalar parameters.
+\end{definition}
+
+An activation is a measurable scalar map extended coordinatewise. The models
+use
+\[
+ \operatorname{GELU}(x)=x\Phi(x),
+ \qquad
+ \operatorname{SiLU}(x)=\frac{x}{1+e^{-x}},
+\]
+where $\Phi$ is the standard normal distribution function
+\cite{hendrycks-2016-gelu,elfwing-2018-sigmoid}.
+
+\begin{definition}[Feedforward neural network]
+Let $d_0,\ldots,d_L\in\N$. A depth-$L$ feedforward network with activation
+$\rho$ is the parametrized family $\Phi_\theta:\R^{d_0}\to\R^{d_L}$ given by
+\begin{align*}
+ h_0&=x,\\
+ h_\ell&=\rho(W_\ell h_{\ell-1}+b_\ell),&&1\le\ell<L,\\
+ \Phi_\theta(x)&=W_Lh_{L-1}+b_L,
+\end{align*}
+where $\theta$ concatenates all matrices and biases. Its hypothesis class is
+$\{\Phi_\theta:\theta\in\Theta\}$.
+\end{definition}
+
+Modern architectures extend this base definition by composing differentiable
+modules in a directed acyclic computation graph. Embedding lookup,
+normalization, residual addition, attention, and multiplicative gating are such
+modules. The Transformer is a neural network in this compositional sense.
+
+\subsection{Embeddings and tensor-valued layers}
+
+An embedding table is $E\in\R^{K\times d}$ with lookup $i\mapsto E_{i,:}$.
+Equivalently, $E_{i,:}=e_i^\top E$ for a one-hot vector $e_i\in\R^K$.
+Embedding lookup is therefore linear after the canonical inclusion of a token
+into Euclidean space.
+
+A sequence model acts on $H\in\R^{B\times d}$. Positionwise linear maps have
+the form $H\mapsto HW$; normalization and activations act rowwise; attention
+couples rows. Every finite tensor can be vectorized, so the architecture remains
+a finite-dimensional parametrized map.
+
+\subsection{Differentiation and backpropagation}
+
+\begin{proposition}[Chain rule for a computation graph; standard]
+Let $F=f_L\circ\cdots\circ f_1$, with differentiable
+$f_j:\R^{d_{j-1}}\to\R^{d_j}$. If $h_j=f_j(h_{j-1})$, then
+\[
+ DF(x)=Df_L(h_{L-1})\cdots Df_1(x).
+\]
+For a scalar objective, reverse-mode differentiation evaluates the associated
+transpose-Jacobian products from $L$ to $1$ and returns the gradient, up to
+floating-point arithmetic.
+\end{proposition}
+
+\begin{proof}
+The formula is the multivariate chain rule applied inductively. Associativity
+permits the Jacobian product to be evaluated in reverse order without forming
+each full Jacobian.
+\end{proof}
+
+Backpropagation is thus an efficient chain-rule algorithm, not an optimizer.
+The resulting gradient is passed to SGD, AdamW, or another optimizer
+\cite{rumelhart-1986-learning}.
+
+Three questions must remain separate. \emph{Representation} asks which maps a
+fixed architecture realizes exactly. \emph{Approximation} asks how closely a
+growing architecture family approaches a target. \emph{Optimization} asks
+whether an algorithm reaches a good parameter. Universal approximation, when
+available, answers only the second question; it implies neither learnability
+from finite data nor convergence of AdamW. No universal-approximation claim is
+used in this experiment.
+
+\section{Discrete representation and sample construction}
+
+\subsection{Character tokenization}
+
+\begin{definition}[Corpus-dependent tokenizer]
+For a string $s$, define
+\[
+ \V(s)=\{a\in\A:\text{there exists }i\text{ such that }s_i=a\}.
+\]
+A character tokenizer is a bijection
+\[
+ \tau_s:\V(s)\longrightarrow\{0,\ldots,|\V(s)|-1\},
+\]
+extended coordinatewise to $\V(s)^n$ for every $n\in\N$. The implementation
+orders $\V(s)$ lexicographically and stores both $\tau_s$ and $\tau_s^{-1}$.
+\end{definition}
+
+The transformation preserves length exactly. Since $\V(s)$ is constructed
+from the complete string, including its test segment, no out-of-vocabulary
+event can occur. This is a limited transductive use of test information: token
+frequencies and order remain hidden, but the support is known before fitting.
+A stricter protocol would construct a common vocabulary from training data and
+include an unknown symbol.
+
+Corpus-specific vocabularies also alter model capacity. If
+$|\V(s^{(0)})|\ne|\V(s^{(1)})|$, the input embedding and output projection have
+different dimensions. Losses are therefore reported in nats per character,
+and parameter counts must be reported alongside them.
+
+\subsection{Overlapping windows}
+
+Fix a context length $B\in\N$. For $x_i=\tau_s(s_i)$ define
+\begin{align}
+ W_B(s)_i&=(X_i,Y_i),\qquad 0\le i<N-B,\\
+ X_i&=(x_i,\ldots,x_{i+B-1}),\\
+ Y_i&=(x_{i+1},\ldots,x_{i+B}).
+\end{align}
+The string is first divided into contiguous train, validation, and test
+intervals with proportions $0.8$, $0.1$, and $0.1$. Windows are then formed
+inside each interval, so no example crosses a split boundary.
+
+\begin{proposition}[Deterministic overlap; project-specific]
+For every admissible $i$, the input windows $X_i$ and $X_{i+1}$ share exactly
+$B-1$ token positions. Consequently, the collection
+$\{W_B(s)_i\}_{i=0}^{N-B-1}$ cannot be an iid sample unless the word ``sample''
+refers only to randomized index selection from the finite collection.
+\end{proposition}
+
+\begin{proof}
+The suffix $(x_{i+1},\ldots,x_{i+B-1})$ of $X_i$ is the prefix of
+$X_{i+1}$ of the same length. The equality is deterministic and is independent
+of any probabilistic law assigned to the original string.
+\end{proof}
+
+The reported standard deviations across randomly selected evaluation batches
+therefore describe Monte Carlo variation of the implemented estimator. Without
+a dependence model---for example, stationarity plus a suitable mixing
+condition---the usual iid standard-error interpretation is unavailable.
+
+\section{Probability model}
+
+Let $K=|\V(s)|$ and
+$\Delta_{K-1}=\{p\in[0,1]^K:\sum_{j=0}^{K-1}p_j=1\}$. For a fixed architecture,
+$w\in\Theta\subset\R^p$ parametrizes a map
+\[
+ f_w:\{0,\ldots,K-1\}^{\le B}\longrightarrow\R^{B\times K}.
+\]
+The domain carries its power $\sigma$-algebra and the codomain its Borel
+$\sigma$-algebra. Every such map is measurable because the domain is finite.
+
+\begin{definition}[Autoregressive probability kernel]
+For a context $x_{\le t}$, define
+\begin{align}
+ Q_w(j\mid x_{\le t})
+   &=\softmax(f_w(x_{\le t})_{t,:})_j,\\
+ \softmax(z)_j&=\frac{e^{z_j}}{\sum_{r=0}^{K-1}e^{z_r}}.
+\end{align}
+For fixed $x_{\le t}$, $Q_w(\cdot\mid x_{\le t})\in\Delta_{K-1}$.
+\end{definition}
+
+Given an initial distribution $\mu$ on $\V$, the finite-horizon law is
+\begin{equation}
+ Q_w^{(T)}(x_0,\ldots,x_{T-1})
+ =\mu(x_0)\prod_{t=0}^{T-2}Q_w(x_{t+1}\mid x_{\le t}).
+ \label{eq:factorization}
+\end{equation}
+Because the state space is finite, consistency of these kernels gives an
+infinite-sequence law by the Ionescu--Tulcea construction. The implementation
+only requires the finite-dimensional distributions in
+\eqref{eq:factorization}.
+
+Generation temperature $T_0>0$ replaces $z$ by $z/T_0$. Top-$k$ filtering
+restricts the support to the indices of the $k$ largest logits and renormalizes
+the resulting mass. Both operations modify the generative kernel; neither
+appears in the training objective.
+
+\section{Loss and risk}
+
+\subsection{Logarithmic score}
+
+For $z\in\R^K$ and $y\in\{0,\ldots,K-1\}$, set
+\[
+ \ell(z,y)=-\log\softmax(z)_y,
+ \qquad
+ L_B(w;X,Y)=\frac1B\sum_{t=0}^{B-1}\ell(f_w(X)_{t,:},Y_t).
+\]
+The derivative with respect to $z$ is
+\[
+ \nabla_z\ell(z,y)=\softmax(z)-e_y.
+\]
+Thus backpropagation begins with the difference between the predicted
+probability vector and the one-hot observation.
+
+\begin{proposition}[Conditional cross-entropy decomposition; standard]
+Let $P$ be a probability measure on $\mathcal C\times\V$, where $\mathcal C$
+is a finite context space, and let $q(\cdot\mid c)$ be strictly positive.
+Then
+\[
+ \E_P[-\log q(Y\mid C)]
+ =H_P(Y\mid C)+
+ \E_{P_C}\!\left[\KL(P(\cdot\mid C)\|q(\cdot\mid C))\right].
+\]
+\end{proposition}
+
+\begin{proof}
+Condition on $C=c$, add and subtract $\log P(Y\mid c)$, and sum over
+$c$ with respect to $P_C$. The first term is conditional entropy and the
+second is the conditional Kullback--Leibler divergence.
+\end{proof}
+
+This identity is essential for interpreting cross-corpus loss. A larger test
+loss can reflect larger irreducible conditional entropy, larger approximation
+error, larger optimization error, or any combination of them. Raw loss does
+not isolate model quality from task difficulty.
+
+\subsection{Population and empirical measures}
+
+Let $\mathsf P$ be a probability measure on
+$\X=\V^B\times\V^B$. Its population risk is
+\[
+ R_{\mathsf P}(w)=\int_{\X}L_B(w;x,y)\,d\mathsf P(x,y).
+\]
+For a finite set of valid indices $I$, define the window empirical measure
+\[
+ \widehat{\mathsf P}_I=\frac1{|I|}\sum_{i\in I}\delta_{W_B(s)_i},
+ \qquad
+ \widehat R_I(w)=\int L_B(w;x,y)\,d\widehat{\mathsf P}_I(x,y).
+\]
+This definition is valid without an iid assumption. Such an assumption becomes
+necessary only when $\widehat R_I$ is used to infer properties of an external
+population law.
+
+\subsection{Unigram adjustment}
+
+To separate part of the marginal difficulty, the current evaluator fits on the
+training split the add-$\alpha$ unigram model
+\[
+ \widehat q_\alpha(a)=\frac{n_{\rm tr}(a)+\alpha}
+ {N_{\rm tr}+\alpha K},\qquad \alpha=1,
+\]
+and computes
+\begin{align}
+ L_{\rm uni}&=-\frac1{N_{\rm te}}
+ \sum_{t\in I_{\rm te}}\log\widehat q_\alpha(x_t),\\
+ G_{\rm ctx}&=L_{\rm uni}-\widehat R_{\rm te}(\widehat w),\\
+ G_{\rm rel}&=G_{\rm ctx}/L_{\rm uni}.
+\end{align}
+$G_{\rm ctx}$ measures predictive gain over corpus-specific marginal
+frequencies. It does not remove domain shift or identify a causal effect. Bits
+per character and perplexity are
+\[
+ \operatorname{bpc}=\widehat R_{\rm te}/\log 2,
+ \qquad \PPL=\exp(\widehat R_{\rm te}).
+\]
+They are monotone transformations of the same loss and must not be treated as
+independent evidence.
+
+\section{Model classes}
+
+\subsection{Bigram kernel}
+
+The reference model has $A\in\R^{K\times K}$ and
+\[
+ Q_A(x_{t+1}=j\mid x_{\le t})=\softmax(A_{x_t,:})_j.
+\]
+It is a homogeneous first-order Markov kernel. Its implementation as an
+embedding table is exactly this parameterization, not an approximation to it.
+
+\begin{proposition}[Closed-form bigram maximum likelihood; standard]
+Let $n_{ij}$ be the number of observed transitions $i\to j$ and
+$n_i=\sum_jn_{ij}$. Among all row-stochastic matrices $P$, every maximum of
+\[
+ \sum_{i,j}n_{ij}\log P_{ij}
+\]
+satisfies $P_{ij}=n_{ij}/n_i$ whenever $n_i>0$. Rows with $n_i=0$ are not
+identified by the likelihood.
+\end{proposition}
+
+\begin{proof}
+The objective separates by rows. For a fixed $i$ with $n_i>0$, divide by
+$n_i$ and write $\widehat p_{ij}=n_{ij}/n_i$. Then
+\[
+ -\sum_j\widehat p_{ij}\log P_{ij}
+ =H(\widehat p_i)+\KL(\widehat p_i\|P_i),
+\]
+which is minimized exactly at $P_i=\widehat p_i$ on the observed support.
+\end{proof}
+
+The trainable logit matrix is redundant: adding a constant to every entry of a
+row leaves its softmax unchanged. This non-identifiability is benign for the
+induced transition kernel but means the parameter minimizer is never unique
+without an additional convention or penalty.
+
+\subsection{Causal Transformer}
+
+Each symbol is represented by $E(x_t)+P_t\in\R^d$. A pre-normalized block is
+\begin{align*}
+ H'&=H+\operatorname{MHA}(\operatorname{LN}(H)),\\
+ H^+&=H'+\operatorname{FFN}(\operatorname{LN}(H')).
+\end{align*}
+For one head, set $Q=HW_Q$, $K'=HW_K$, and $V=HW_V$. Then
+\begin{align}
+ \operatorname{Attn}(H)&=\softmax_{\rm row}
+ \left(\frac{QK'^{\top}}{\sqrt{d_h}}+M\right)V,\\
+ M_{ts}&=\begin{cases}0,&s\le t,\\-\infty,&s>t.\end{cases}
+\end{align}
+The output at position $t$ is therefore a function only of $x_{\le t}$. The
+repository tests this property by perturbing future tokens and checking exact
+agreement of earlier logits. The feedforward sublayer is
+$W_2\operatorname{GELU}(W_1h+b_1)+b_2$; a final affine map produces $K$
+logits \cite{vaswani-2017-attention}.
+
+For finite logits, each unmasked attention row is a probability vector. Hence
+the pre-projection head output at position $t$ is a convex combination of
+$v_0,\ldots,v_t$. This does not make the complete block a convex map: queries,
+keys, values, softmax weights, residual paths, and the feedforward network all
+depend nonlinearly on the input and parameters.
+
+\begin{proposition}[Causal invariance; architecture-specific]
+Let $F_w$ be a stack of the implemented masked attention blocks with
+positionwise normalization, positionwise feedforward maps, and residual
+connections. If two token sequences $x,x'$ agree through position $t$, then
+their logits agree through position $t$:
+\[
+ x_{0:t}=x'_{0:t}
+ \quad\Longrightarrow\quad
+ F_w(x)_{0:t,:}=F_w(x')_{0:t,:}.
+\]
+\end{proposition}
+
+\begin{proof}
+Token and positional embeddings agree through $t$. Assume the hidden states
+entering a block agree through $t$. Positionwise maps preserve this agreement.
+At a position $r\le t$, the mask restricts attention to indices $s\le r$, on
+which the hidden states agree; therefore queries, keys, values, weights, and
+attention outputs agree. Residual addition preserves equality. Induction over
+the two sublayers and then over blocks proves the claim; the final rowwise
+normalization and output projection preserve it.
+\end{proof}
+
+\subsection{RMSNorm--RoPE--SwiGLU variant}
+
+The second model preserves the residual causal decoder and changes three local
+operators \cite{touvron-2023-llama}. First,
+\[
+ \operatorname{RMSNorm}(h)=g\odot
+ \frac{h}{\sqrt{d^{-1}\|h\|_2^2+\varepsilon}}.
+\]
+Second, RoPE applies the planar rotation $R(t\theta_i)$ to each coordinate pair,
+where $\theta_i=10000^{-2i/d_h}$ \cite{su-2021-roformer}. Since
+\[
+ R(t\theta)^{\top}R(s\theta)=R((s-t)\theta),
+\]
+the inner product between a rotated query and key depends on their relative
+position. Third,
+\[
+ \operatorname{SwiGLU}(h)=W_d
+ \bigl(\operatorname{SiLU}(W_gh)\odot W_uh\bigr).
+\]
+The term ``LLaMA-style'' refers only to these architectural choices; it does not
+claim equivalence in scale, training regime, tokenizer, or every implementation
+detail.
+
+\section{Optimization theory}
+\label{sec:optimization}
+
+\subsection{First-order geometry}
+
+Let $F:\R^p\to\R$ be differentiable. The gradient is characterized by
+\[
+ F(w+h)=F(w)+\langle\nabla F(w),h\rangle+o(\|h\|).
+\]
+Under the Euclidean norm, the unit direction of largest first-order decrease is
+the normalized negative gradient when $\nabla F(w)\ne0$:
+\[
+ d_*(w)=-\frac{\nabla F(w)}{\|\nabla F(w)\|}.
+\]
+Gradient descent therefore uses $w_{k+1}=w_k-\eta_k\nabla F(w_k)$.
+
+\begin{definition}[Smoothness and convexity]
+A differentiable $F$ is $L$-smooth if
+\[
+ \|\nabla F(u)-\nabla F(v)\|\le L\|u-v\|
+ \quad\text{for all }u,v.
+\]
+It is convex if
+$F(v)\ge F(u)+\langle\nabla F(u),v-u\rangle$ for all $u,v$, and
+$\mu$-strongly convex if the right-hand side can be augmented by
+$\frac\mu2\|v-u\|^2$.
+\end{definition}
+
+\begin{lemma}[Descent lemma; standard]
+If $F$ is $L$-smooth, then
+\[
+ F(v)\le F(u)+\langle\nabla F(u),v-u\rangle
+ +\frac L2\|v-u\|^2.
+\]
+Consequently, for $0<\eta<2/L$,
+\[
+ F(u-\eta\nabla F(u))
+ \le F(u)-\eta(1-L\eta/2)\|\nabla F(u)\|^2.
+\]
+\end{lemma}
+
+\begin{proof}
+Apply the fundamental theorem of calculus to
+$t\mapsto F(u+t(v-u))$, subtract the linear term at $u$, and use the
+Lipschitz bound on the gradient. Substitute $v=u-\eta\nabla F(u)$ for the
+second assertion.
+\end{proof}
+
+\begin{proposition}[Linear convergence in the ideal convex regime; standard]
+If $F$ is $L$-smooth and $\mu$-strongly convex with minimizer $w^*$, then
+gradient descent with $\eta=1/L$ satisfies
+\[
+ F(w_k)-F(w^*)\le
+ \left(1-\frac\mu L\right)^k
+ \bigl(F(w_0)-F(w^*)\bigr).
+\]
+\end{proposition}
+
+This is a reference theorem, not a theorem about the experiment. Neural-network
+objectives are nonconvex and need not be globally smooth with a useful common
+constant. The statement isolates the roles of step size, curvature, and the
+condition number in the regime where a complete theory is available.
+
+\subsection{Stochastic gradients}
+
+Suppose $F(w)=n^{-1}\sum_{i=1}^nf_i(w)$. If $I$ is uniform on
+$\{1,\ldots,n\}$, then $G(w,I)=\nabla f_I(w)$ satisfies
+$\E[G(w,I)]=\nabla F(w)$. A minibatch average sampled with replacement remains
+unbiased and has covariance reduced by the batch size. This is randomness over
+a fixed finite objective; it does not make overlapping windows iid draws from
+a text-generating population.
+
+Classical stochastic approximation requires assumptions such as unbiasedness,
+controlled second moments, appropriate step sizes, and convexity or weaker
+regularity. Adam introduces coordinatewise adaptive preconditioning; results
+for plain SGD do not transfer automatically \cite{kingma-2015-adam}.
+
+\subsection{The implemented AdamW update}
+
+Let $J(w)=\widehat R_{I_{\rm tr}}(w)$. At step $k$, a minibatch of indices
+$B_k$ is sampled uniformly with replacement and
+\[
+ g_k=\frac1{|B_k|}\sum_{i\in B_k}\nabla_w L_B(w_k;W_B(s)_i).
+\]
+Conditionally on $w_k$, $g_k$ is unbiased for the gradient of the finite-window
+objective. Overlap between the underlying windows does not change this
+finite-population statement; it does affect population interpretations.
+
+AdamW performs \cite{kingma-2015-adam,loshchilov-2019-adamw}
+\begin{align*}
+ m_k&=\beta_1m_{k-1}+(1-\beta_1)g_k,\\
+ v_k&=\beta_2v_{k-1}+(1-\beta_2)g_k^{\odot2},\\
+ \widehat m_k&=m_k/(1-\beta_1^k),
+ &\widehat v_k&=v_k/(1-\beta_2^k),\\
+ w_{k+1}&=(1-\eta\lambda)w_k-
+ \eta\widehat m_k\oslash(\sqrt{\widehat v_k}+\varepsilon).
+\end{align*}
+The multiplicative factor $(1-\eta\lambda)$ distinguishes decoupled weight
+decay from adding an $\ell^2$ penalty to an adaptive gradient. No global
+convergence statement follows for the nonconvex neural objectives considered
+here.
+
+If $S$ steps use minibatch size $M$ and context length $B$, the number of target
+positions processed is $SMB$. Here it is
+$5000\cdot32\cdot128=20{,}480{,}000$ per fit. This count includes repeated
+windows and is an optimization budget, not a count of distinct observations.
+
+\section{Empirical diversity functionals}
+
+For $1\le n\le N$ and $a\in\A^n$, define the empirical block law
+\[
+ \widehat p_{n,s}(a)=\frac1{N-n+1}
+ \sum_{i=0}^{N-n}\1\{(s_i,\ldots,s_{i+n-1})=a\}.
+\]
+The implemented functionals are
+\begin{align}
+ H_n(s)&=-\sum_{a\in\A^n}\widehat p_{n,s}(a)
+             \log\widehat p_{n,s}(a),\label{eq:block-entropy}\\
+ D_n(s)&=\frac{|\{a:\widehat p_{n,s}(a)>0\}|}{N-n+1}.
+ \label{eq:distinct}
+\end{align}
+$H_n$ is block entropy, not entropy rate. Under stationarity, the increments
+$H_n-H_{n-1}$ are finite-order conditional entropies and form a nonincreasing
+sequence converging to the entropy rate. The plug-in estimates used here do not
+inherit that interpretation without assumptions and finite-sample analysis.
+Moreover, $D_n$ depends strongly on both $N$ and $n$; it is not an intrinsic
+property unless those quantities are fixed.
+
+For the UTF-8 byte string $b(s)$, define
+\[
+ \rho_{\rm gzip}(s)=
+ \frac{|\operatorname{gzip}(b(s))|}{|b(s)|}.
+\]
+A larger value means lower compressibility under this particular algorithm. It
+is neither Shannon entropy nor a universal estimator of Kolmogorov complexity.
+The inverse convention $|b(s)|/|\operatorname{gzip}(b(s))|$ has the opposite
+orientation and must not be substituted without changing all inequalities.
+
+\section{Experimental design}
+
+Medium contains one author. High interleaves excerpts from ten authors and
+genres. Thus the nominal factor ``diversity'' jointly changes composition,
+domain, marginal frequencies, and alphabet. The observed lengths are
+$1{,}000{,}000$ and $999{,}998$ characters. A two-character discrepancy is
+numerically negligible at this scale, but the stored experiment does not
+satisfy literal equality of sample size.
+
+\begin{table}[ht]
 \centering
-\caption{Presupuesto común de entrenamiento.}
-\label{tab:hparams}
-\small
-\begin{tabular}{ll}
+\caption{Configuration of each historical fit.}
+\label{tab:config}
+\begin{tabular}{lr}
 \toprule
-Cantidad & Valor \\
+Quantity & Value\\
 \midrule
-Tokenización & nivel caracter \\
-Contexto \(B\) & 128 \\
-Batch size \(M\) & 32 \\
-Dimensión \(d\) & 64 \\
-Capas/cabezas & 2 / 4 \\
-Optimizador & AdamW \\
-Learning rate \(\alpha\) & \(3\cdot 10^{-4}\) \\
-Pasos de entrenamiento & 5\,000 \\
-Runs por configuración & 1 \\
+Context length $B$ & 128\\
+Minibatch size $M$ & 32\\
+Residual dimension $d$ & 64\\
+Blocks / attention heads & 2 / 4\\
+AdamW steps & 5,000\\
+Learning rate & $3\times10^{-4}$\\
+Independent repetitions & 1\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-% =====================================================================
-\section{Resultados}
-\label{sec:results}
+The historical checkpoints do not record their random seeds. The current
+pipeline fixes and stores seeds, but that change cannot reconstruct the random
+state of the four reported fits. A complete training run is the experimental
+unit. The 100 evaluation minibatches are repeated measurements of a fixed
+checkpoint, not 100 independent training replications.
 
-\begin{table}[h]
+\section{Results}
+
+\begin{table}[ht]
 \centering
-\caption{Diversidad empírica de los dos corpus.}
-\label{tab:diversity}
-\small
-\begin{tabular}{lrrrr}
+\caption{Descriptive corpus statistics. Entropies are in nats.}
+\label{tab:corpus}
+\begin{tabular}{lrrrrr}
 \toprule
-Corpus & Vocab & \(H_3\) & Dist.-4 & Gzip \\
+Corpus & $N$ & $|\V|$ & $H_3$ & $D_4$ & $\rho_{\rm gzip}$\\
 \midrule
-Medium & 94 & 7.4058 & 0.0378 & 0.3579 \\
-High   & 102 & 7.5880 & 0.0592 & 0.4066 \\
+Medium & 1,000,000 & 94  & 7.4058 & 0.0378 & 0.3579\\
+High   &   999,998 & 102 & 7.5880 & 0.0592 & 0.4066\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Las columnas del cuadro tienen el siguiente significado. \emph{Corpus}
-es la etiqueta del corpus; \emph{Medium} y \emph{High} se eligen por
-su nivel relativo de diversidad, no por su tamaño (ambos tienen
-\(N=1\,000\,000\) caracteres). \emph{Vocab} es \(|\V|\), el número de caracteres
-distintos que aparecen en el corpus. \(H_3\) es la entropía empírica
-de los 3-gramas en nats; reportar específicamente \(H_3\) (y no
-\(H_1\), \(H_2\), \(H_4\) o más altos) tiene que ver con que \(H_1\) ignora todo el orden y \(H_k\) con \(k\) grande se vuelve muy sensible al tamaño finito del corpus (muchos \(k\)-gramas observados solo
-una vez), lo que sesga el estimador plug-in. \emph{Dist.-4} es la
-fracción de 4-gramas únicos sobre el total de 4-gramas; valores
-cercanos a \(1\) indican poca repetición exacta de bloques de cuatro
-caracteres. \emph{Gzip} es \(\rho_{\rm gzip}\), razón entre tamaño
-comprimido y tamaño original; valores cercanos a \(1\) indican baja
-redundancia compresible. En conjunto, las cuatro métricas dan una
-imagen variada del tamaño del alfabeto, incertidumbre estadística
-local, repetición exacta de bloques cortos y compresibilidad global.
-
-\begin{figure}[h]
+\begin{figure}[ht]
 \centering
-\includegraphics[width=\columnwidth]{figures/fig_diversity.pdf}
-\caption{El corpus \emph{High} domina a \emph{Medium} en diversidad local:
-mayor entropía de \(n\)-gramas, mayor distinct-4 y mayor razón gzip.}
+\includegraphics[width=0.9\textwidth]{figures/fig_diversity.pdf}
+\caption{High-minus-Medium differences. Entropy differences are measured in
+nats; $D_4$ and $\rho_{\rm gzip}$ differences are measured in percentage
+points. Separate axes prevent heterogeneous quantities from sharing a common
+bar scale.}
 \label{fig:diversity}
 \end{figure}
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
-\caption{Evaluación en test.
-\(\PPL=\exp(\widehat R_{\rm test})\),
-\(\mathrm{gap}=\widehat R_{\rm test}-\widehat R_{\rm train}\).}
+\caption{Empirical risks of the historical checkpoints. Parameter counts
+include vocabulary-dependent layers.}
 \label{tab:results}
-\small
-\begin{tabular}{llrrr}
+\begin{tabular}{llrrrr}
 \toprule
-Modelo & Corpus & Loss & PPL & Gap \\
+Model & Corpus & Train & Test & Gap & Parameters\\
 \midrule
-Transformer & Medium & 1.8355 &  6.27 & \(0.0676\) \\
-Transformer & High   & 1.9597 &  7.10 & \(0.0398\) \\
-LLaMA-style & Medium & 1.4638 &  4.32 & \(0.0993\) \\
-LLaMA-style & High   & 1.7010 &  5.48 & \(0.0742\) \\
+Transformer & Medium & 1.7679 & 1.8355 & 0.0676 & 120,030\\
+Transformer & High   & 1.9198 & 1.9597 & 0.0398 & 121,062\\
+LLaMA-style & Medium & 1.3645 & 1.4638 & 0.0993 & 143,424\\
+LLaMA-style & High   & 1.6268 & 1.7010 & 0.0742 & 144,448\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \centering
-\includegraphics[width=\columnwidth]{figures/fig_results.pdf}
-\caption{A igual presupuesto, \emph{High} empeora pérdida y perplejidad
-pero exhibe menor brecha de generalización en ambas arquitecturas.}
+\includegraphics[width=0.9\textwidth]{figures/fig_results.pdf}
+\caption{Test loss and the empirical test--train difference. Segments connect
+corpora within an architecture; they are neither trajectories nor confidence
+intervals. Perplexity is omitted because it is $\exp(\mathrm{loss})$ and has
+exactly the same ordering.}
 \label{fig:results}
 \end{figure}
 
-El efecto es consistente pero moderado a esta escala. En el Transformer, pasar de
-\emph{Medium} a \emph{High} aumenta la pérdida de test en \(0.124\) y la
-perplejidad en aproximadamente \(13\%\). En LLaMA-style, la pérdida aumenta
-\(0.237\) y la perplejidad en \(27\%\). Por tanto,
+The High-minus-Medium test differences are $0.1241$ for the Transformer and
+$0.2372$ for the LLaMA-style model. The corresponding gap differences are
+$-0.0277$ and $-0.0251$. These signs describe the four stored checkpoints.
+There are no independent repetitions from which to estimate variation across
+initializations. Furthermore, High models have more parameters because
+$K=102$ rather than $K=94$.
+
+The new evaluator produces $L_{\rm uni}$, bpc, $G_{\rm ctx}$, and
+$G_{\rm rel}$. They are not inserted into the historical table until all four
+checkpoints have been evaluated under one versioned protocol. This restriction
+prevents a report from silently combining artifacts generated under different
+evaluation procedures.
+
+\section{Logical scope and identifiability}
+
+The observations establish only
 \[
-D(\textit{High})>D(\textit{Medium})
-\quad\text{pero}\quad
-\widehat R_{\rm test}(\textit{High})>
-\widehat R_{\rm test}(\textit{Medium}).
+ \Delta_{\rm test}>0,
+ \qquad
+ \Delta_{\rm gap}<0
 \]
-La pregunta inicial se responde en sentido negativo para el riesgo
-absoluto. Sin embargo, la brecha de generalización exhibe el patrón inverso:
-\(\mathrm{gap}(\textit{High})<\mathrm{gap}(\textit{Medium})\) en ambas
-arquitecturas. Con \(10^6\) caracteres, la mayor diversidad reduce el
-sobreajuste, aunque sin reducir la pérdida absoluta.
+for both architectures and for the stored realizations. They do not establish
+that diversity increases expected risk or acts as an implicit regularizer. A
+causal interpretation would require an intervention that changes diversity
+while holding domain, alphabet, length, and semantic distribution fixed, as
+well as independent training repetitions.
 
-% =====================================================================
-\section{Discusión}
-\label{sec:discussion}
+A smaller gap does not by itself order out-of-sample performance. A constant
+predictor may have a zero gap and high risk. Here the smaller High gap coexists
+with larger train and test losses. The phrase ``less overfitting'' can therefore
+refer only to an empirical difference of losses, not to superior prediction.
 
-La interpretación rigurosa no es que la diversidad perjudique
-siempre. El resultado muestra que, en modelos pequeños entrenados
-desde cero, mayor diversidad local puede aumentar la incertidumbre
-condicional efectiva del problema más rápido de lo que la red puede
-aprovecharla con \(5\,000\) pasos de AdamW. La caída del riesgo se
-descompone en términos de aproximación, optimización y generalización
-\cite[Cap.~14]{petersen-zech-2026-mathematical}; aquí los tres factores
-empujan a favor de \emph{Medium}. El resultado no contradice los tokens
-efectivos de Chang et~al.~\cite{chang-etal-2024-scaling} y más bien los delimita, y apunta a decir algo del estilo de que un token es efectivo solo relativamente a una arquitectura, un tokenizador,
-un optimizador y una escala.
+An identifiable follow-up design should include:
+\begin{enumerate}
+ \item a family of corpora generated by an explicit random mechanism;
+ \item an exactly shared character budget and a vocabulary fitted on train;
+ \item matched parameter counts and target-position budgets;
+ \item multiple seeds treated as independent experimental units;
+ \item prespecified contrasts for raw loss, contextual gain, and interactions
+       with architecture;
+ \item blockwise evaluation or inference valid for dependent sequences.
+\end{enumerate}
+Varying data size and compute in addition would test whether diversity changes
+the scaling rate, which is closer to the effective-token question than a
+single-budget comparison.
 
-\paragraph{Amenazas a la validez.}
-\emph{High} puede mezclar diversidad con cambio de dominio entre
-fragmentos; hay una sola \emph{semilla} por configuración (por semilla
-se entiende el estado inicial del generador de números pseudoaleatorios
-del experimento; controla la inicialización de los pesos del modelo y
-el orden en que se muestrean los minibatches durante el entrenamiento;
-con una sola semilla, las pérdidas reportadas son una realización del
-experimento, no un promedio sobre realizaciones independientes); la
-tokenización a caracter ignora estructura subpalabra; la escala
-(\(10^6\) tokens) es órdenes de magnitud menor que la de LLMs reales.
-Controles naturales son repetir el experimento con varias semillas,
-construir corpus con diversidad controlada dentro de una sola fuente,
-variar el presupuesto de entrenamiento y comparar con tokenización
-subpalabra.
+\section{Conclusion}
 
-\paragraph{Inversión entre pérdida y brecha.}
-El hallazgo más matizado es la inversión entre pérdida absoluta y
-brecha. En \emph{Medium}, la baja diversidad permite encontrar
-patrones explotables rápido, lo que reduce \(\widehat R_{\rm train}\)
-pero induce a memorizar regularidades específicas (gap mayor). En
-\emph{High}, las regularidades exactas son más raras, lo que limita
-la pérdida alcanzable y también el sobreajuste. La diversidad operaría
-como regularización implícita a esta escala: no mejora el ajuste, pero
-modera la brecha entre entrenamiento y test.
+The experiment separates three mathematical objects: descriptive diversity of
+an observed string, predictive risk of a conditional model, and the empirical
+test--train difference. In the stored runs, High has larger diversity
+functionals, larger test loss, and a smaller gap. The evidence does not identify
+a causal relation among these facts. The reproducible contribution is a formal
+specification of the pipeline, an audit of its confounders, and an evaluation
+scheme that compares absolute risk with contextual gain over a unigram
+reference. The effective-token hypothesis remains open for a replicated and
+controlled design.
 
-% =====================================================================
-\section{Conclusión}
-\label{sec:conclusion}
-
-El estudio formaliza los objetos matemáticos que ejecuta \code{nicolas-lm}
-(red neuronal entrenable, modelo autoregresivo, riesgo poblacional y
-empírico, AdamW, atención causal, RMSNorm, RoPE, SwiGLU) y evalúa una
-pregunta concreta sobre tokens efectivos: si mayor diversidad textual
-empírica implica mayor efectividad. Con \(N=10^6\) caracteres y \(5\,000\)
-pasos de AdamW, el resultado es matizado, pues el corpus más diverso produce
-pérdida y perplejidad absolutas más altas en ambas arquitecturas, lo que
-responde negativamente la pregunta principal; pero a la vez exhibe una
-brecha de generalización menor, lo que sugiere que la diversidad sí modera el
-sobreajuste a esta escala. La efectividad de los tokens no se reduce a
-una sola métrica. En riesgo absoluto la homogeneidad gana; en
-generalización relativa, la diversidad \textit{ayuda}.
-
-\section*{AI disclosure}
-
-Se usaron ChatGPT y Claude como apoyo para la programación, depuración, generación de gráficas y búsqueda de literatura. El código se desarrolló con base en la literatura citada y fue verificado mediante pruebas y experimentos reproducibles.
+\section*{Tool disclosure}
+Language-model assistants were used for code review, manuscript restructuring,
+and algebraic checks. Numerical statements are derived from versioned repository
+artifacts. Responsibility for the content and conclusions remains with the
+author.
 
 {\small
 \bibliographystyle{unsrtnat}

@@ -23,6 +23,12 @@ RESULT_COLUMNS = [
     "test_loss_mean",
     "test_loss_se",
     "test_ppl",
+    "test_bits_per_character",
+    "unigram_test_loss",
+    "contextual_gain_over_unigram",
+    "relative_contextual_gain",
+    "parameter_count",
+    "training_tokens_seen",
     "generalization_gap",
 ]
 
@@ -105,6 +111,18 @@ def result_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
                 "test_loss_mean": format_number(row["test_loss_mean"]),
                 "test_loss_se": format_number(row["test_loss_se"]),
                 "test_ppl": format_number(row["test_ppl"]),
+                "test_bits_per_character": format_number(
+                    row.get("test_bits_per_character", "")
+                ),
+                "unigram_test_loss": format_number(row.get("unigram_test_loss", "")),
+                "contextual_gain_over_unigram": format_number(
+                    row.get("contextual_gain_over_unigram", "")
+                ),
+                "relative_contextual_gain": format_number(
+                    row.get("relative_contextual_gain", "")
+                ),
+                "parameter_count": row.get("parameter_count", ""),
+                "training_tokens_seen": row.get("training_tokens_seen", ""),
                 "generalization_gap": format_number(row["generalization_gap"]),
             }
         )

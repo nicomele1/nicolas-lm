@@ -199,38 +199,29 @@ def legend(p, x, y, labels, colors, sz=8.5):
 # FIGURA 1: Métricas de diversidad
 # ═══════════════════════════════════════════════════════════════════════════════
 def make_diversity():
-    W, H = 495.0, 168.0
+    W, H = 495.0, 155.0
     p = PDF(W, H)
 
-    # área de plot: y0=45, y1=138 → altura=93pt
-    Y0, Y1 = 45.0, 138.0
-
-    # Panel izquierdo: entropías H1, H2, H3
-    bar_panel(p, 48, 238, Y0, Y1,
-              groups=['H_1', 'H_2', 'H_3'],
-              vals_med=[3.1008, 5.5460, 7.4058],
-              vals_high=[3.1308, 5.6084, 7.5880],
-              y_min=0, y_max=8.5,
-              y_ticks=[0, 2, 4, 6, 8],
-              tick_fmt=lambda t: str(int(t)),
-              title='Entropía por orden de n-grama',
-              y_label='Entropia (nats)',
-              bw=18, bg=4, gg=18)
-
-    # Panel derecho: Distinct-4 y Gzip ratio
-    bar_panel(p, 268, 487, Y0, Y1,
-              groups=['Distinct-4', 'Gzip ratio'],
-              vals_med=[0.0378, 0.3579],
-              vals_high=[0.0592, 0.4066],
-              y_min=0, y_max=0.55,
-              y_ticks=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5],
-              tick_fmt=lambda t: f'{t:.1f}',
-              title='Diversidad léxica y compresibilidad (proporcion)',
-              y_label=None,
-              bw=22, bg=5, gg=35)
-
-    # Leyenda global centrada arriba
-    legend(p, 170, H - 14, ['Medium', 'High'], [TEAL, MAGE], sz=9)
+    panels = [
+        (35, 235, ['H1', 'H2', 'H3'], [0.0299, 0.0624, 0.1822], 0.20,
+         'Entropy difference (nats)'),
+        (285, 485, ['Distinct-4', 'Gzip'], [2.1355, 4.8709], 5.2,
+         'Difference (percentage points)'),
+    ]
+    for x0, x1, labels, vals, xmax, title in panels:
+        zero, right = x0 + 62, x1 - 12
+        p.text((x0 + x1) / 2, 137, title, sz=9, align='c', col=AXIS)
+        p.stroke(AXIS); p.lw(0.6); p.line(zero, 31, zero, 119)
+        for i, (label, val) in enumerate(zip(labels, vals)):
+            y = 103 - i * 30
+            xp = zero + (right - zero) * val / xmax
+            p.text(zero - 8, y - 3, label, sz=8.5, align='r')
+            p.stroke(GRID); p.lw(0.5); p.line(zero, y, right, y)
+            p.stroke(TEAL); p.lw(1.2); p.line(zero, y, xp, y)
+            p.fill(TEAL); p.rect(xp - 2.5, y - 2.5, 5, 5, 'f')
+            p.text(xp + 6, y - 3, f'{val:.3f}', sz=7.5)
+        p.text(zero, 17, '0', sz=7, align='c')
+        p.text(right, 17, f'{xmax:g}', sz=7, align='c')
 
     return p.build()
 
@@ -239,49 +230,32 @@ def make_diversity():
 # FIGURA 2: Resultados
 # ═══════════════════════════════════════════════════════════════════════════════
 def make_results():
-    W, H = 495.0, 170.0
+    W, H = 495.0, 160.0
     p = PDF(W, H)
 
-    Y0, Y1 = 45.0, 138.0
-    ARCHS = ['Transformer', 'LLaMA-style']
-
-    # Panel 1: Pérdida de test
-    bar_panel(p, 45, 192, Y0, Y1,
-              groups=ARCHS,
-              vals_med=[1.8355, 1.4638],
-              vals_high=[1.9597, 1.7010],
-              y_min=0, y_max=2.5,
-              y_ticks=[0, 0.5, 1.0, 1.5, 2.0, 2.5],
-              tick_fmt=lambda t: f'{t:.1f}',
-              title='Pérdida de test',
-              y_label='Pérdida (entropía cruzada)',
-              bw=17, bg=4, gg=20)
-
-    # Panel 2: Perplejidad
-    bar_panel(p, 210, 355, Y0, Y1,
-              groups=ARCHS,
-              vals_med=[6.27, 4.32],
-              vals_high=[7.10, 5.48],
-              y_min=0, y_max=9.0,
-              y_ticks=[0, 2, 4, 6, 8],
-              tick_fmt=lambda t: str(int(t)),
-              title='Perplejidad (PPL)',
-              y_label=None,
-              bw=17, bg=4, gg=20)
-
-    # Panel 3: Brecha de generalización
-    bar_panel(p, 372, 490, Y0, Y1,
-              groups=ARCHS,
-              vals_med=[0.0676, 0.0993],
-              vals_high=[0.0398, 0.0742],
-              y_min=0, y_max=0.14,
-              y_ticks=[0.0, 0.02, 0.04, 0.06, 0.08, 0.10, 0.12],
-              tick_fmt=lambda t: f'{t:.2f}',
-              title='Brecha de generalización (gap)',
-              y_label=None,
-              bw=14, bg=3, gg=16)
-
-    legend(p, 170, H - 14, ['Medium', 'High'], [TEAL, MAGE], sz=9)
+    panels = [
+        (35, 238, 'Empirical test risk', 1.35, 2.05,
+         [(1.8355, 1.9597), (1.4638, 1.7010)]),
+        (286, 489, 'Test - train difference', 0.02, 0.11,
+         [(0.0676, 0.0398), (0.0993, 0.0742)]),
+    ]
+    names = ['Transformer', 'LLaMA-style']
+    for x0, x1, title, xmin, xmax, pairs in panels:
+        left, right = x0 + 70, x1 - 10
+        p.text((x0 + x1) / 2, 138, title, sz=9.5, align='c', col=AXIS)
+        p.stroke(AXIS); p.lw(0.6); p.line(left, 30, right, 30)
+        for i, (name, (vm, vh)) in enumerate(zip(names, pairs)):
+            y = 102 - i * 38
+            xm = left + (right-left) * (vm-xmin)/(xmax-xmin)
+            xh = left + (right-left) * (vh-xmin)/(xmax-xmin)
+            p.text(left - 7, y - 3, name, sz=8, align='r')
+            p.stroke(GRID); p.lw(0.5); p.line(left, y, right, y)
+            p.stroke(AXIS); p.lw(1); p.line(xm, y, xh, y)
+            p.fill(TEAL); p.rect(xm-3, y-3, 6, 6, 'f')
+            p.fill(MAGE); p.rect(xh-3, y-3, 6, 6, 'f')
+        p.text(left, 17, f'{xmin:.2f}', sz=7, align='c')
+        p.text(right, 17, f'{xmax:.2f}', sz=7, align='c')
+    legend(p, 185, 147, ['Medium', 'High'], [TEAL, MAGE], sz=8)
 
     return p.build()
 

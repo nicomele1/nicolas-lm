@@ -87,7 +87,12 @@ The final CSV combines corpus metrics and model metrics:
 - corpus metrics: `H1`, `H2`, `H3`, `conditional_bigram_entropy`,
   `distinct_2`, `distinct_3`, `distinct_4`, `gzip_compression_ratio`;
 - training/evaluation metrics: `train_loss`, `val_loss`, `test_loss_mean`,
-  `test_loss_se`, `test_ppl`, `generalization_gap`;
+  `test_loss_se`, `test_ppl`, `test_bits_per_character`,
+  `generalization_gap`;
+- difficulty-adjusted metrics: `unigram_test_loss`,
+  `contextual_gain_over_unigram`, and `relative_contextual_gain`;
+- capacity and compute controls: `parameter_count` and
+  `training_tokens_seen`;
 - model configuration: `model_name`, `block_size`, `embedding_dim`,
   `num_heads`, `num_layers`, `max_steps`.
 
@@ -101,6 +106,19 @@ Delta_test = test_loss(high_diversity) - test_loss(low_diversity)
 
 Negative `Delta_test` means the higher-diversity corpus achieved lower test
 cross-entropy. Also compare perplexity and generalization gap.
+
+Raw test loss alone is not sufficient when corpora have different marginal
+character distributions or vocabulary sizes. The protocol therefore fits an
+add-one unigram model on each training split and evaluates it on the matching
+test split. `contextual_gain_over_unigram = unigram_test_loss - test_loss`
+estimates how much held-out predictive performance comes from context beyond
+character frequencies. Report both raw loss and this baseline-adjusted gain;
+neither should replace the other.
+
+`parameter_count` detects capacity differences induced by corpus-specific
+vocabulary sizes. `training_tokens_seen = max_steps * batch_size * block_size`
+records the optimization budget, which must also remain fixed for a controlled
+comparison.
 
 The project uses `gzip_compression_ratio = compressed_size / original_size`.
 Under this convention, higher values indicate less compressible and more

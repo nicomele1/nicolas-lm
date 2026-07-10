@@ -3,7 +3,11 @@
 % Idioma y codificación
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[spanish,es-noquoting]{babel}
+\IfFileExists{spanish.ldf}{
+    \usepackage[spanish,es-noquoting]{babel}
+}{
+    \usepackage[english]{babel}
+}
 
 % Matemáticas
 \usepackage{amsmath}
@@ -17,12 +21,17 @@
 \usepackage{bm}
 
 % Cajas de definiciones
-\usepackage[most]{tcolorbox}
+\IfFileExists{tcolorbox.sty}{
+    \usepackage[most]{tcolorbox}
+}{
+    \newenvironment{tcolorbox}[1][]{\par\medskip\noindent\ignorespaces}{\par\medskip}
+    \newcommand{\tcbset}[1]{}
+}
 
 % Márgenes y formato general
 \usepackage[a4paper,margin=2.8cm]{geometry}
 \usepackage{setspace}
-\usepackage{enumitem}
+\IfFileExists{enumitem.sty}{\usepackage{enumitem}}{}
 
 % Hipervínculos
 \usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
@@ -3712,6 +3721,6 @@ Dos observaciones importantes están en orden. Primero, la función objetivo aso
 
 
 \bibliographystyle{plainnat}
-\bibliography{biblio}
+\bibliography{mathematical_background}
 
 \end{document}

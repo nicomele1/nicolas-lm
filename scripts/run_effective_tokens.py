@@ -38,6 +38,9 @@ EVAL_FIELDS = [
     "max_steps",
     "batch_size",
     "eval_iters",
+    "eval_seed",
+    "parameter_count",
+    "training_tokens_seen",
     "train_loss",
     "val_loss",
     "test_loss_mean",
@@ -46,6 +49,11 @@ EVAL_FIELDS = [
     "test_loss_ci_low",
     "test_loss_ci_high",
     "test_ppl",
+    "test_bits_per_character",
+    "unigram_test_loss",
+    "unigram_bits_per_character",
+    "contextual_gain_over_unigram",
+    "relative_contextual_gain",
     "generalization_gap",
 ]
 
@@ -129,6 +137,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--val-fraction", type=float, default=0.1)
     parser.add_argument("--eval-iters", type=int, default=100)
     parser.add_argument("--eval-batch-size", type=int, default=32)
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=1337,
+        help="Random seed forwarded to training and evaluation.",
+    )
 
     return parser.parse_args()
 
@@ -304,6 +318,8 @@ def train_model(
             str(args.train_fraction),
             "--val-fraction",
             str(args.val_fraction),
+            "--seed",
+            str(args.seed),
         ],
         env=env,
     )
@@ -333,6 +349,8 @@ def evaluate_model(
             str(args.eval_batch_size),
             "--output",
             str(eval_csv),
+            "--seed",
+            str(args.seed),
         ],
         env=env,
     )

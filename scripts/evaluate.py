@@ -12,6 +12,8 @@ from nicolasm.data import TokenDataset, train_val_test_split
 from nicolasm.models.bigram import BigramLanguageModel
 from nicolasm.models.llama import LlamaStyleLanguageModel
 from nicolasm.models.transformer import TinyTransformerLanguageModel
+from nicolasm.metrics import nats_to_bits, unigram_cross_entropy
+from nicolasm.reproducibility import seed_everything
 from nicolasm.tokenizer import CharTokenizer
 
 
@@ -33,6 +35,9 @@ CSV_FIELDNAMES = [
     "max_steps",
     "batch_size",
     "eval_iters",
+    "eval_seed",
+    "parameter_count",
+    "training_tokens_seen",
     "train_loss",
     "val_loss",
     "test_loss_mean",
@@ -41,6 +46,11 @@ CSV_FIELDNAMES = [
     "test_loss_ci_low",
     "test_loss_ci_high",
     "test_ppl",
+    "test_bits_per_character",
+    "unigram_test_loss",
+    "unigram_bits_per_character",
+    "contextual_gain_over_unigram",
+    "relative_contextual_gain",
     "generalization_gap",
 ]
 
@@ -90,6 +100,12 @@ def parse_args() -> argparse.Namespace:
         "--output",
         type=Path,
         help="Optional CSV path where evaluation metrics are appended.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=1337,
+        help="Random seed used to select evaluation batches.",
     )
 
     return parser.parse_args()
@@ -207,6 +223,8 @@ def append_csv_row(path: Path, row: dict[str, str]) -> None:
 def main() -> None:
     args = parse_args()
 
+    seed_everything(args.seed)
+
     checkpoint_path = args.runs_dir / args.model_name / "model.pt"
 
     if not checkpoint_path.exists():
@@ -258,6 +276,21 @@ def main() -> None:
         eval_iters=args.eval_iters,
     )
     test_ppl = math.exp(test_loss_stats["mean"])
+    test_bpc = nats_to_bits(test_loss_stats["mean"])
+    unigram_test_loss = unigram_cross_entropy(
+        train_tokens=train_tokens,
+        test_tokens=test_tokens,
+        vocab_size=checkpoint["vocab_size"],
+    )
+    unigram_bpc = nats_to_bits(unigram_test_loss)
+    contextual_gain = unigram_test_loss - test_loss_stats["mean"]
+    relative_contextual_gain = contextual_gain / unigram_test_loss
+    parameter_count = sum(parameter.numel() for parameter in model.parameters())
+    training_tokens_seen = (
+        checkpoint.get("max_steps", 0)
+        * checkpoint.get("batch_size", 0)
+        * checkpoint.get("block_size", 0)
+    )
     train_loss = checkpoint.get("final_train_loss")
     val_loss = checkpoint.get("final_val_loss")
     generalization_gap = None
@@ -279,6 +312,9 @@ def main() -> None:
         "max_steps": str(checkpoint.get("max_steps", "")),
         "batch_size": str(args.batch_size),
         "eval_iters": str(args.eval_iters),
+        "eval_seed": str(args.seed),
+        "parameter_count": str(parameter_count),
+        "training_tokens_seen": str(training_tokens_seen),
         "train_loss": "" if train_loss is None else str(train_loss),
         "val_loss": "" if val_loss is None else str(val_loss),
         "test_loss_mean": str(test_loss_stats["mean"]),
@@ -287,6 +323,11 @@ def main() -> None:
         "test_loss_ci_low": str(test_loss_stats["ci_low"]),
         "test_loss_ci_high": str(test_loss_stats["ci_high"]),
         "test_ppl": str(test_ppl),
+        "test_bits_per_character": str(test_bpc),
+        "unigram_test_loss": str(unigram_test_loss),
+        "unigram_bits_per_character": str(unigram_bpc),
+        "contextual_gain_over_unigram": str(contextual_gain),
+        "relative_contextual_gain": str(relative_contextual_gain),
         "generalization_gap": (
             "" if generalization_gap is None else str(generalization_gap)
         ),
@@ -304,6 +345,7 @@ def main() -> None:
     print(f"Block size: {block_size}")
     print(f"Batch size: {args.batch_size}")
     print(f"Evaluation batches: {args.eval_iters}")
+    print(f"Evaluation seed: {args.seed}")
     print()
     print(f"Test loss mean: {test_loss_stats['mean']:.4f}")
     print(f"Test loss sd: {test_loss_stats['sd']:.4f}")
@@ -313,6 +355,12 @@ def main() -> None:
         f"[{test_loss_stats['ci_low']:.4f}, {test_loss_stats['ci_high']:.4f}]"
     )
     print(f"Test perplexity: {test_ppl:.4f}")
+    print(f"Test bits/character: {test_bpc:.4f}")
+    print(f"Unigram baseline loss: {unigram_test_loss:.4f}")
+    print(f"Contextual gain over unigram: {contextual_gain:.4f}")
+    print(f"Relative contextual gain: {relative_contextual_gain:.2%}")
+    print(f"Parameter count: {parameter_count:,}")
+    print(f"Training tokens processed: {training_tokens_seen:,}")
 
     if train_loss is not None:
         print(f"Checkpoint train loss: {train_loss:.4f}")
