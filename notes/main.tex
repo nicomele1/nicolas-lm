@@ -135,7 +135,7 @@ $S$-valued random variable. Its law is the pushforward measure
 If $S$ is finite, a probability law is a vector $(p_s)_{s\in S}$ with
 $p_s\ge0$ and $\sum_sp_s=1$. Integration then reduces to summation:
 \[
- \E[g(X)]=\int_\Omega g(X(\omega)),d\mathbb P(\omega)
+ \E[g(X)]=\int_\Omega g(X(\omega))\,d\mathbb P(\omega)
  =\sum_{s\in S}g(s)p_s.
 \]
 
@@ -146,8 +146,8 @@ Let $Z$ be integrable and $\mathcal G\subseteq\mathcal F$. A conditional
 expectation $\E[Z\mid\mathcal G]$ is a $\mathcal G$-measurable integrable
 random variable satisfying
 \[
- \int_G\E[Z\mid\mathcal G],d\mathbb P
- =\int_G Z,d\mathbb P
+ \int_G\E[Z\mid\mathcal G]\,d\mathbb P
+ =\int_G Z\,d\mathbb P
  \quad\text{for every }G\in\mathcal G.
 \]
 It is unique up to almost-sure equality.
@@ -223,7 +223,7 @@ class $\mathcal H$ is a set of hypotheses. Given a measurable loss
 $\ell:\mathcal O\times\mathcal Y\to[0,\infty]$ and a data law $P$ on
 $\mathcal U\times\mathcal Y$, the population risk is
 \[
- R_P(h)=\int\ell(h(u),y),dP(u,y).
+ R_P(h)=\int\ell(h(u),y)\,dP(u,y).
 \]
 \end{definition}
 
@@ -241,7 +241,7 @@ For observations $Z_i=(U_i,Y_i)$, define
 \[
  \widehat P_n=\frac1n\sum_{i=1}^n\delta_{Z_i},
  \qquad
- \widehat R_n(h)=\int\ell(h(u),y),d\widehat P_n
+ \widehat R_n(h)=\int\ell(h(u),y)\,d\widehat P_n
  =\frac1n\sum_{i=1}^n\ell(h(U_i),Y_i).
 \]
 
